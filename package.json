@@ -52,7 +52,7 @@
     "husky": "^9.1.7",
     "knip": "^6.45.1",
     "oxfmt": "0.78.0",
-    "oxlint": "1.93.0",
+    "oxlint": "1.94.0",
     "size-limit": "^14.3.0",
     "tsdown": "^0.23.7",
     "typescript": "^7.0.2",
