@@ -5,7 +5,6 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   return {
     ...actual,
     getStepTransaction: vi.fn(),
-    getRelayerQuote: vi.fn(),
     relayTransaction: vi.fn(),
     // The terminal destination-status watcher polls `getStatus` over HTTP on a
     // 5s interval and never settles under test. It runs after everything these
@@ -186,7 +185,6 @@ describe('C2 — a step that is only ever a signature', () => {
     // the spender test is live — it simply does not match. The standard
     // endpoint is therefore used even though this step ends up relayed.
     expect(scenario.events('getStepTransaction')).toHaveLength(1)
-    expect(scenario.events('getRelayerQuote')).toEqual([])
     expect(scenario.executedStep().transactionRequest).toBeUndefined()
   })
 })

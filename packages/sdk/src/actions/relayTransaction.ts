@@ -36,17 +36,9 @@ export const relayTransaction = async (
     }
   }
 
-  // Determine if the request is for a gasless relayer service or advanced relayer service
-  // We will use the same endpoint for both after the gasless relayer service is deprecated
-  const relayerPath = params.typedData.some(
-    (t) => t.primaryType === 'PermitWitnessTransferFrom'
-  )
-    ? '/relayer/relay'
-    : '/advanced/relay'
-
   const result = await request<RelayResponse>(
     client.config,
-    `${client.config.apiUrl}${relayerPath}`,
+    `${client.config.apiUrl}/advanced/relay`,
     {
       method: 'POST',
       headers: {

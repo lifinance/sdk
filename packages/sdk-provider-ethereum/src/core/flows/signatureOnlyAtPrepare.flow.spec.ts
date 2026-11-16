@@ -5,7 +5,6 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   return {
     ...actual,
     getStepTransaction: vi.fn(),
-    getRelayerQuote: vi.fn(),
     relayTransaction: vi.fn(),
     // The terminal destination-status watcher polls `getStatus` over HTTP on a
     // 5s interval and never settles under test. It runs after everything these
@@ -250,7 +249,6 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
     await scenario.run()
 
     expect(scenario.events('getStepTransaction')).toHaveLength(2)
-    expect(scenario.events('getRelayerQuote')).toEqual([])
     expect(scenario.events('relayTransaction')).toHaveLength(1)
   })
 

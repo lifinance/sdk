@@ -1,4 +1,8 @@
-import { type CheckBalanceOptions, CheckBalanceTask } from '@lifi/sdk'
+import {
+  type CheckBalanceOptions,
+  CheckBalanceTask,
+  isGaslessStep,
+} from '@lifi/sdk'
 import type { Address } from 'viem'
 import { getAccountCode } from '../../actions/getAccountCode.js'
 import { isSmartContractWalletCode } from '../../actions/isSmartContractWallet.js'
@@ -19,6 +23,12 @@ export class EthereumCheckBalanceTask extends CheckBalanceTask {
     context: EthereumStepExecutorContext
   ): Promise<CheckBalanceOptions> {
     const { client, step, fromChain } = context
+
+    // The relayer pays the gas of a gasless step. Before prepare the step has
+    // no typed data yet, so the relay fee is the only signal.
+    if (isGaslessStep(step)) {
+      return { walletPaysGas: false }
+    }
 
     const userFundsTransaction = isPermit2AllowanceLane(step, fromChain)
     if (step.typedData?.length && !userFundsTransaction) {

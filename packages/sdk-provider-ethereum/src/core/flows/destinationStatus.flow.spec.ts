@@ -17,7 +17,6 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   return {
     ...actual,
     getStepTransaction: vi.fn(),
-    getRelayerQuote: vi.fn(),
     relayTransaction: vi.fn(),
   }
 })
