@@ -1,15 +1,14 @@
 overrides:
   axios: ^1.21.1
-  ws@<=8.22.2: 8.22.2
-  # @lifi/data-types 7.2.2 pins @lifi/types 18.15.0 exactly. Keep one copy with
-  # the range that @lifi/sdk asks for.
+  ws@<=8.23.0: 8.23.0
+  # @lifi/data-types 8.0.0 pins @lifi/types 19.0.0 exactly. Keep one copy with
+  # the range that the published @lifi/sdk asks for. Move this range when the
+  # example moves to an @lifi/sdk with @lifi/types 19.
   '@lifi/data-types>@lifi/types': ^18.16.0
   # zod 4.1.12 is an optional peer of abitype that stayed in the lockfile;
   # 4.6.0 fixes all three Aikido advisories.
   'zod@<4.6.0': '>=4.6.0'
 allowBuilds:
   esbuild: false
-#   - 2026-11-12: fast-track viem@2.57.19 (all checks pass, or approved by the user).
 minimumReleaseAgeExclude:
   - '@lifi/*'
-  - viem@2.57.19
