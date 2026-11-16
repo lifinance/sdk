@@ -4,9 +4,30 @@ allowBuilds:
   esbuild: false
   msw: true
   nx: true
+#   - 2026-11-16: fast-track @oxlint/binding-android-arm-eabi@1.94.0, @oxlint/binding-android-arm64@1.94.0, @oxlint/binding-darwin-arm64@1.94.0, @oxlint/binding-darwin-x64@1.94.0, @oxlint/binding-freebsd-x64@1.94.0, @oxlint/binding-linux-arm-gnueabihf@1.94.0, @oxlint/binding-linux-arm-musleabihf@1.94.0, @oxlint/binding-linux-arm64-gnu@1.94.0, @oxlint/binding-linux-arm64-musl@1.94.0, @oxlint/binding-linux-ppc64-gnu@1.94.0, @oxlint/binding-linux-riscv64-gnu@1.94.0, @oxlint/binding-linux-riscv64-musl@1.94.0, @oxlint/binding-linux-s390x-gnu@1.94.0, @oxlint/binding-linux-x64-gnu@1.94.0, @oxlint/binding-linux-x64-musl@1.94.0, @oxlint/binding-openharmony-arm64@1.94.0, @oxlint/binding-win32-arm64-msvc@1.94.0, @oxlint/binding-win32-ia32-msvc@1.94.0, @oxlint/binding-win32-x64-msvc@1.94.0, oxlint@1.94.0 (approved by the user).
 minimumReleaseAgeExclude:
   - '@bigmi/*'
   - '@lifi/*'
+  - '@oxlint/binding-android-arm-eabi@1.94.0'
+  - '@oxlint/binding-android-arm64@1.94.0'
+  - '@oxlint/binding-darwin-arm64@1.94.0'
+  - '@oxlint/binding-darwin-x64@1.94.0'
+  - '@oxlint/binding-freebsd-x64@1.94.0'
+  - '@oxlint/binding-linux-arm-gnueabihf@1.94.0'
+  - '@oxlint/binding-linux-arm-musleabihf@1.94.0'
+  - '@oxlint/binding-linux-arm64-gnu@1.94.0'
+  - '@oxlint/binding-linux-arm64-musl@1.94.0'
+  - '@oxlint/binding-linux-ppc64-gnu@1.94.0'
+  - '@oxlint/binding-linux-riscv64-gnu@1.94.0'
+  - '@oxlint/binding-linux-riscv64-musl@1.94.0'
+  - '@oxlint/binding-linux-s390x-gnu@1.94.0'
+  - '@oxlint/binding-linux-x64-gnu@1.94.0'
+  - '@oxlint/binding-linux-x64-musl@1.94.0'
+  - '@oxlint/binding-openharmony-arm64@1.94.0'
+  - '@oxlint/binding-win32-arm64-msvc@1.94.0'
+  - '@oxlint/binding-win32-ia32-msvc@1.94.0'
+  - '@oxlint/binding-win32-x64-msvc@1.94.0'
+  - oxlint@1.94.0
 overrides:
   axios: ^1.21.1
   ws@<=8.23.0: 8.23.0
