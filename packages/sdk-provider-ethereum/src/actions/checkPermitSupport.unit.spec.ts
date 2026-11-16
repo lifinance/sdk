@@ -72,7 +72,8 @@ describe('checkPermitSupport — Permit2 signer gate', () => {
       expect.anything(),
       TOKEN,
       OWNER,
-      PERMIT2
+      PERMIT2,
+      CHAIN_ID
     )
   })
 
@@ -118,7 +119,8 @@ describe('checkPermitSupport — the owner is passed explicitly', () => {
       expect.anything(),
       expect.anything(),
       'getNativePermit',
-      expect.objectContaining({ ownerAddress: OWNER, chainId: CHAIN_ID })
+      expect.objectContaining({ ownerAddress: OWNER, chainId: CHAIN_ID }),
+      CHAIN_ID
     )
   })
 })

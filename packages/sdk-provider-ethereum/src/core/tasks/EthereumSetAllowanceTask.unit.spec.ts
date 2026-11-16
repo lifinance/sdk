@@ -180,4 +180,17 @@ describe('EthereumSetAllowanceTask.run', () => {
       expect.objectContaining({ txHash: TX_HASH })
     )
   })
+
+  it('sends the approve on the step chain', async () => {
+    const context = buildContext({
+      typedData: [nativePermit()],
+      disableMessageSigning: true,
+    })
+
+    await task.run(context)
+
+    expect(vi.mocked(setAllowance).mock.calls[0][7]).toMatchObject({
+      id: SOURCE_CHAIN,
+    })
+  })
 })
