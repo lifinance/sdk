@@ -7,6 +7,7 @@ import {
   fetchTxErrorDetails,
   LiFiErrorCode,
   type LiFiStep,
+  ProviderError,
   SDKError,
   TransactionError,
   UnknownError,
@@ -49,10 +50,13 @@ const handleSpecificErrors = async (
   e: any,
   step?: LiFiStep,
   action?: ExecutionAction
-) => {
+): Promise<BaseError> => {
   if (
     e.name === 'UserRejectedRequestError' ||
-    e.cause?.name === 'UserRejectedRequestError'
+    e.cause?.name === 'UserRejectedRequestError' ||
+    // A raw EIP-1193 rejection, for example from a hook that calls the provider directly.
+    e.code === 4001 ||
+    e.cause?.code === 4001
   ) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
@@ -90,6 +94,11 @@ const handleSpecificErrors = async (
    */
   if (e.cause?.code === -32603) {
     return new TransactionError(LiFiErrorCode.TransactionRejected, e.message, e)
+  }
+  // wagmi connectors throw it for a failed switch that is not a rejection,
+  // for example for a chain that the wallet does not support.
+  if (e.name === 'SwitchChainError') {
+    return new ProviderError(LiFiErrorCode.ChainSwitchError, e.message, e)
   }
 
   /**

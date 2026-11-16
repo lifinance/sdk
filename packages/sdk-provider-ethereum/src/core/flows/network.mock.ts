@@ -1079,6 +1079,11 @@ export interface NetworkPageOptions {
   route: Route
   /** `executeInBackground` of the first `executeRoute`. */
   executeInBackground?: boolean
+  /**
+   * The chain the first wallet client claims while its wallet stays on the
+   * source chain, like a wagmi client from `getConnectorClient({ assertChainId: false })`.
+   */
+  clientChain?: ExtendedChain
 }
 
 export interface NetworkPage {
@@ -1137,15 +1142,18 @@ export const openNetworkPage = (options: NetworkPageOptions): NetworkPage => {
   const { network } = options
   const account = recordingAccount(network)
   const switches: number[] = []
-  const walletOn = (chain: ExtendedChain): WalletClient =>
+  const walletOn = (
+    chain: ExtendedChain,
+    clientChain: ExtendedChain = chain
+  ): WalletClient =>
     createWalletClient({
       account,
-      chain: viemChainOf(chain),
+      chain: viemChainOf(clientChain),
       transport: custom({
         request: (args) => network.walletRequest(chain.id, args),
       }),
     })
-  let walletClient = walletOn(SOURCE_CHAIN)
+  let walletClient = walletOn(SOURCE_CHAIN, options.clientChain)
 
   const provider = EthereumProvider({
     getWalletClient: async () => walletClient,
