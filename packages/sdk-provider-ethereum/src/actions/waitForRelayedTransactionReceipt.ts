@@ -86,22 +86,23 @@ export const waitForRelayedTransactionReceipt = async (
       // `bridge` would let a proxy such as the Jumper backend answer it with
       // its own order lookup. The cast is the one `getRelayedTransactionStatus`
       // makes for the Hyperliquid answer of the same endpoint.
-      const result = await (isGasless
-        ? (getStatus(
-            client,
-            { taskId },
-            { signal }
-          ) as unknown as Promise<RelayStatusResponseData>)
-        : getRelayedTransactionStatus(
-            client,
-            {
-              taskId,
-              fromChain: step.action.fromChainId,
-              toChain: step.action.toChainId,
-              ...(step.tool !== 'custom' && { bridge: step.tool }),
-            },
-            { signal }
-          )
+      const result = await (
+        isGasless
+          ? (getStatus(
+              client,
+              { taskId },
+              { signal }
+            ) as unknown as Promise<RelayStatusResponseData>)
+          : getRelayedTransactionStatus(
+              client,
+              {
+                taskId,
+                fromChain: step.action.fromChainId,
+                toChain: step.action.toChainId,
+                ...(step.tool !== 'custom' && { bridge: step.tool }),
+              },
+              { signal }
+            )
       ).catch((e) => {
         // A request that the abort ended is no failure of the relayer.
         if (process.env.NODE_ENV === 'development' && !signal?.aborted) {
