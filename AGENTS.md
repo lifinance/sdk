@@ -44,7 +44,7 @@ and the Linear anchor policy live in the **`release` skill**
 (`.claude/skills/release/SKILL.md`). Read it before touching the publish path.
 
 ### External pinned deps — bump MANUALLY (out of Changesets scope)
-- `@lifi/types` (18.x, in `@lifi/sdk` deps) and `@lifi/data-types` (devDep) are external
+- `@lifi/types` (19.x, in `@lifi/sdk` deps) and `@lifi/data-types` (devDep) are external
   pinned versions. Changesets does **not** track or bump them. When upgrading, edit the
   pins by hand and add a `fix:`/`feat:` changeset describing the bump.
 
