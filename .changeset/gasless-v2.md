@@ -20,5 +20,5 @@ For all relayed steps, the wait now ends after five status errors in a row, not 
 
 Deprecated (still exported, so that published consumers keep building):
 
-- `getRelayerQuote` in `@lifi/sdk` and in the client actions. The legacy relayer endpoint is shut down. Use `getRoutes` with `options.gasless: true`.
+- `getRelayerQuote` in `@lifi/sdk` and in the client actions. The legacy relayer endpoint is shut down, so it now rejects at once with a `NotFound` error and sends no request. Use `getRoutes` with `options.gasless: true`.
 - `isGaslessStep(step, chain)` in `@lifi/sdk-provider-ethereum`. It detects only the legacy typed data. Use `isGaslessStep(step)` from `@lifi/sdk`.

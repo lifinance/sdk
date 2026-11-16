@@ -1,89 +1,36 @@
-import type {
-  LiFiStep,
-  RelayerQuoteResponse,
-  RequestOptions,
-} from '@lifi/types'
+import type { LiFiStep, RequestOptions } from '@lifi/types'
 import { BaseError } from '../errors/baseError.js'
-import { ErrorName } from '../errors/constants.js'
-import { ValidationError } from '../errors/errors.js'
+import { ErrorName, LiFiErrorCode } from '../errors/constants.js'
 import { SDKError } from '../errors/SDKError.js'
-import type { QuoteRequest, QuoteRequestFromAmount } from '../types/actions.js'
+import type { QuoteRequestFromAmount } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
-import { request } from '../utils/request.js'
 
 /**
- * Get a relayer quote for a token transfer
- * @param client - The SDK client
- * @param params - The configuration of the requested quote
- * @param options - Request options
- * @throws {LiFiError} - Throws a LiFiError if request fails
- * @returns Relayer quote for a token transfer
+ * Get a relayer quote for a token transfer. The legacy gasless relayer service
+ * behind it is shut down, so this always rejects and sends no request.
+ *
+ * Kept only so that published consumers that still import it keep building.
+ * It stays `async`: callers such as `getRelayerQuote(...).catch(() => null)`
+ * need a rejected promise, not a synchronous throw.
+ * @param _client - The SDK client
+ * @param _params - The configuration of the requested quote
+ * @param _options - Request options
+ * @throws {SDKError} - Always, with a `NotFound` cause.
+ * @returns Never resolves with a quote.
  * @deprecated The legacy gasless relayer service is shut down. Request
  * gasless routes with `options.gasless: true` on `getRoutes`, or
  * `gasless: true` on `getQuote`, and detect them with `isGaslessStep`.
  */
 export const getRelayerQuote = async (
-  client: SDKClient,
-  params: QuoteRequestFromAmount,
-  options?: RequestOptions
+  _client: SDKClient,
+  _params: QuoteRequestFromAmount,
+  _options?: RequestOptions
 ): Promise<LiFiStep> => {
-  const requiredParameters: Array<keyof QuoteRequestFromAmount> = [
-    'fromChain',
-    'fromToken',
-    'fromAddress',
-    'fromAmount',
-    'toChain',
-    'toToken',
-  ]
-  for (const requiredParameter of requiredParameters) {
-    if (!params[requiredParameter]) {
-      throw new SDKError(
-        new ValidationError(
-          `Required parameter "${requiredParameter}" is missing.`
-        )
-      )
-    }
-  }
-
-  // apply defaults
-  params.integrator ??= client.config.integrator
-  params.order ??= client.config.routeOptions?.order
-  params.slippage ??= client.config.routeOptions?.slippage
-  params.referrer ??= client.config.routeOptions?.referrer
-  params.fee ??= client.config.routeOptions?.fee
-  params.allowBridges ??= client.config.routeOptions?.bridges?.allow
-  params.denyBridges ??= client.config.routeOptions?.bridges?.deny
-  params.preferBridges ??= client.config.routeOptions?.bridges?.prefer
-  params.allowExchanges ??= client.config.routeOptions?.exchanges?.allow
-  params.denyExchanges ??= client.config.routeOptions?.exchanges?.deny
-  params.preferExchanges ??= client.config.routeOptions?.exchanges?.prefer
-
-  for (const key of Object.keys(params)) {
-    if (
-      params[key as keyof QuoteRequest] === undefined ||
-      params[key as keyof QuoteRequest] === null
-    ) {
-      delete params[key as keyof QuoteRequest]
-    }
-  }
-
-  const result = await request<RelayerQuoteResponse>(
-    client.config,
-    `${client.config.apiUrl}/relayer/quote?${new URLSearchParams(
-      params as unknown as Record<string, string>
-    )}`,
-    {
-      signal: options?.signal,
-    }
-  )
-
-  if (result.status === 'error') {
-    throw new BaseError(
-      ErrorName.ServerError,
-      result.data.code,
-      result.data.message
+  throw new SDKError(
+    new BaseError(
+      ErrorName.NotFoundError,
+      LiFiErrorCode.NotFound,
+      'The legacy gasless relayer service is shut down. Request gasless routes with `options.gasless: true` on `getRoutes`.'
     )
-  }
-
-  return result.data
+  )
 }
