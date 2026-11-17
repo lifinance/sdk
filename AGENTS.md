@@ -60,3 +60,8 @@ read the `SKILL.md` file before you do that task.
 - `bump-packages` — the routine dependency bump.
 - `changeset` — write a `.changeset/*.md` file.
 - `release` — the release flow, dist-tags and preview builds.
+
+## Ownership
+
+Jumper squad, reviewer Eugene (`@chybisov`). Review requests: request the
+reviewer above on the PR.
