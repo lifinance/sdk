@@ -32,8 +32,9 @@ export const parseBitcoinErrors = async (
 const walletCancelMessage = /^transaction (was )?cancell?ed\.?$/i
 
 const getWalletCancelMessage = (e: any): string | undefined => {
-  // The SDK's own errors keep their code, also as the cause of another error.
-  if (e instanceof BaseError || e.cause instanceof BaseError) {
+  // An SDK error keeps its code also as the cause of another error. The
+  // caller returns an SDK error itself before this check.
+  if (e.cause instanceof BaseError) {
     return undefined
   }
   // bigmi wraps a wallet error as "Unknown Error", with the wallet error as
@@ -75,6 +76,10 @@ const handleSpecificErrors = (e: any) => {
     return new TransactionError(LiFiErrorCode.NotFound, e.message, e)
   }
 
+  if (e instanceof BaseError) {
+    return e
+  }
+
   const walletCancel = getWalletCancelMessage(e)
   if (walletCancel) {
     return new TransactionError(
@@ -82,10 +87,6 @@ const handleSpecificErrors = (e: any) => {
       walletCancel,
       e
     )
-  }
-
-  if (e instanceof BaseError) {
-    return e
   }
 
   return new UnknownError(e.message || ErrorMessage.UnknownError, e)

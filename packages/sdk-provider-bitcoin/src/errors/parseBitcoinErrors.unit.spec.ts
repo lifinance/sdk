@@ -87,6 +87,7 @@ describe('parseBitcoinErrors', () => {
     expect(parsedError.cause).toBeInstanceOf(TransactionError)
     expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
     expect(parsedError.cause.message).toBe('Transaction canceled')
+    expect(parsedError.cause.cause).toBe(error)
   })
 
   it.each([

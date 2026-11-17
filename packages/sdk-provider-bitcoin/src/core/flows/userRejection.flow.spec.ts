@@ -49,7 +49,7 @@ describe('Bitcoin wallet cancel', () => {
     const page = await openPage(network)
     const updates = recordRouteUpdates()
     // An injected Unisat provider, on Cancel; bigmi wraps it as
-    // "Unknown Error" (Sentry JUMPER-FRONT-XC). The user cancels each prompt.
+    // "Unknown Error" (Sentry JUMPER-FRONT-XC).
     page.signPsbt.mockRejectedValue(new Error('Transaction canceled'))
 
     const error = await page
