@@ -62,11 +62,9 @@ describe('Bitcoin wallet cancel', () => {
       )
 
     expect(error?.code).toBe(LiFiErrorCode.TransactionCanceled)
-    // The harness wallet is asked 4 times: its client keeps bigmi's default
-    // retryCount (3), and bigmi retries an error without a numeric code.
-    // A connector client from @bigmi/client sets retryCount: 0, so a real
-    // wallet is asked once.
-    expect(page.signPsbt).toHaveBeenCalledTimes(4)
+    // The wallet is asked once. bigmi would retry this error, because it has
+    // no numeric code, and each retry opens the prompt again.
+    expect(page.signPsbt).toHaveBeenCalledTimes(1)
     expect(network.sent).toEqual([])
     expect(network.statusRequests).toEqual([])
     expect(updates.changes).toEqual([

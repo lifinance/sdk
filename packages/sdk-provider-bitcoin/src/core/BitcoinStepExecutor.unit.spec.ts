@@ -13,10 +13,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@bigmi/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@bigmi/core')>()
-  return { ...actual, signPsbt: vi.fn(), waitForTransaction: vi.fn() }
+  return { ...actual, waitForTransaction: vi.fn() }
 })
 
-import { signPsbt, waitForTransaction } from '@bigmi/core'
+import { waitForTransaction } from '@bigmi/core'
 import type { BitcoinStepExecutorContext } from '../types.js'
 import { BitcoinStepExecutor } from './BitcoinStepExecutor.js'
 import { BitcoinSignAndExecuteTask } from './tasks/BitcoinSignAndExecuteTask.js'
@@ -26,6 +26,9 @@ const TX_HASH = 'ab'.repeat(32)
 const TX_HEX = 'SIGNED_TX_HEX'
 const SENDER = 'bc1qsender'
 const NOW = 1_800_000_000_000
+
+/** The wallet client's `request`. The sign task sends it only `signPsbt`. */
+const signPsbt = vi.fn()
 
 /** Reads the private task list out of the pipeline the executor built. */
 const taskNames = (actions: ExecutionAction[]): string[] => {
@@ -142,7 +145,7 @@ describe('BitcoinStepExecutor resume of a stored transaction', () => {
         ) => step.execution.actions.find((stored) => stored.type === type),
         updateAction: vi.fn(),
       },
-      walletClient: { account: { address: SENDER } },
+      walletClient: { account: { address: SENDER }, request: signPsbt },
       publicClient: { request, sendUTXOTransaction },
       fromChain: {
         metamask: { blockExplorerUrls: ['https://mempool.space/'] },
@@ -311,7 +314,7 @@ describe('BitcoinStepExecutor first run', () => {
       isBridgeExecution: false,
       allowUserInteraction: true,
       statusManager,
-      walletClient: { account: { address: SENDER } },
+      walletClient: { account: { address: SENDER }, request: signPsbt },
       publicClient: { request, sendUTXOTransaction },
       fromChain: {
         metamask: { blockExplorerUrls: ['https://mempool.space/'] },

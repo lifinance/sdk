@@ -1,8 +1,12 @@
 import {
+  type Account,
   AddressType,
+  type Chain,
+  type Client,
   getAddressInfo,
   hexToUnit8Array,
-  signPsbt,
+  type Transport,
+  type UTXOWalletSchema,
   withTimeout,
 } from '@bigmi/core'
 import * as ecc from '@bitcoinerlab/secp256k1'
@@ -27,6 +31,14 @@ import {
   classifyBitcoinSendFailure,
   lookUpBitcoinTransaction,
 } from './classifyBitcoinSendFailure.js'
+
+/** The client type that bigmi's `signPsbt` action takes. */
+type SignPsbtClient = Client<
+  Transport,
+  Chain | undefined,
+  Account | undefined,
+  UTXOWalletSchema
+>
 
 export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: BitcoinStepExecutorContext): Promise<TaskResult> {
@@ -142,11 +154,21 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
     // We give users 10 minutes to sign the transaction or it should be considered expired
     const signedPsbtHex = await withTimeout(
       () =>
-        signPsbt(walletClient, {
-          psbt: psbt.toHex(),
-          inputsToSign: inputsToSign,
-          finalize: false,
-        }),
+        // One prompt: bigmi retries an error without a numeric code, such
+        // as a wallet cancel that it wraps as "Unknown Error", and each retry
+        // opens the prompt again. bigmi's `signPsbt` action keeps the
+        // client's retryCount (3 by default).
+        (walletClient as SignPsbtClient).request(
+          {
+            method: 'signPsbt',
+            params: {
+              psbt: psbt.toHex(),
+              inputsToSign: inputsToSign,
+              finalize: false,
+            },
+          },
+          { dedupe: true, retryCount: 0 }
+        ),
       {
         timeout: 600_000,
         errorInstance: new TransactionError(
