@@ -61,7 +61,7 @@ afterEach(() => {
 })
 
 describe('Solana wallet cancel', () => {
-  it('fails with TransactionCanceled and sends nothing when the wallet cancels with only a message', async () => {
+  it('fails with SignatureRejected and sends nothing when the wallet cancels with only a message', async () => {
     const client = openPage(wallet, { rpcUrls: [network.url('read')] })
     const recorder = recordRoute()
     // An Android in-app wallet, on Cancel (Sentry JUMPER-FRONT-BC).
@@ -73,7 +73,7 @@ describe('Solana wallet cancel', () => {
         updateRouteHook: recorder.updateRouteHook,
       })
     ).rejects.toMatchObject({
-      code: LiFiErrorCode.TransactionCanceled,
+      code: LiFiErrorCode.SignatureRejected,
       cause: { message: 'Transaction canceled' },
     })
 
@@ -93,12 +93,12 @@ describe('Solana wallet cancel', () => {
     const failed = recorder.latest()
     expect(failed.steps[0].execution).toMatchObject({
       status: 'FAILED',
-      error: { code: LiFiErrorCode.TransactionCanceled },
+      error: { code: LiFiErrorCode.SignatureRejected },
       actions: [
         {
           type: 'SWAP',
           status: 'FAILED',
-          error: { code: LiFiErrorCode.TransactionCanceled },
+          error: { code: LiFiErrorCode.SignatureRejected },
         },
       ],
     })

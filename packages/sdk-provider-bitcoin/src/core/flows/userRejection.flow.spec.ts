@@ -45,7 +45,7 @@ afterEach(() => {
 })
 
 describe('Bitcoin wallet cancel', () => {
-  it('fails with TransactionCanceled and sends nothing when the wallet cancels with only a message', async () => {
+  it('fails with SignatureRejected and sends nothing when the wallet cancels with only a message', async () => {
     const page = await openPage(network)
     const updates = recordRouteUpdates()
     // An injected Unisat provider, on Cancel; bigmi wraps it as
@@ -61,7 +61,7 @@ describe('Bitcoin wallet cancel', () => {
         (reason: unknown) => reason as { code?: unknown }
       )
 
-    expect(error?.code).toBe(LiFiErrorCode.TransactionCanceled)
+    expect(error?.code).toBe(LiFiErrorCode.SignatureRejected)
     // The wallet is asked once. bigmi would retry this error, because it has
     // no numeric code, and each retry opens the prompt again.
     expect(page.signPsbt).toHaveBeenCalledTimes(1)
@@ -75,7 +75,7 @@ describe('Bitcoin wallet cancel', () => {
     const failed = updates.snapshots.at(-1) as RouteExtended
     const canceled = {
       message: 'Transaction canceled',
-      code: LiFiErrorCode.TransactionCanceled,
+      code: LiFiErrorCode.SignatureRejected,
     }
     expect(stepOf(failed).execution?.status).toBe('FAILED')
     expect(stepOf(failed).execution?.error).toEqual(canceled)

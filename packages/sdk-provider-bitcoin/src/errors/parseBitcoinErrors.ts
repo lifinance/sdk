@@ -25,20 +25,29 @@ export const parseBitcoinErrors = async (
   return new SDKError(baseError, step, action)
 }
 
-// A wallet that reports a cancel only as this text (an injected Unisat
-// provider, on Cancel). bigmi wraps it as "Unknown Error" with the wallet
-// error as the cause. The whole message must match: nothing says the user
-// caused it, so it maps to TransactionCanceled, not SignatureRejected.
+// Some wallets report a Cancel on the sign prompt only with this text (an
+// injected Unisat provider). The whole message must match, so a longer error
+// that starts with these words does not count. The wallet sent nothing, so the
+// error maps to SignatureRejected, as a user rejection does.
 const walletCancelMessage = /^transaction (was )?cancell?ed\.?$/i
 
 const getWalletCancelMessage = (e: any): string | undefined => {
-  if (e instanceof BaseError) {
+  // The SDK's own errors keep their code, also as the cause of another error.
+  if (e instanceof BaseError || e.cause instanceof BaseError) {
     return undefined
   }
-  return [e.message, e.cause?.message].find(
-    (message): message is string =>
-      typeof message === 'string' && walletCancelMessage.test(message)
-  )
+  // bigmi wraps a wallet error as "Unknown Error", with the wallet error as
+  // the cause. The Ctrl connector puts the wallet text in the short message
+  // of a bigmi error, which bigmi passes on unchanged.
+  for (const message of [e.message, e.shortMessage, e.cause?.message]) {
+    if (
+      typeof message === 'string' &&
+      walletCancelMessage.test(message.trim())
+    ) {
+      return message.trim()
+    }
+  }
+  return undefined
 }
 
 const handleSpecificErrors = (e: any) => {
@@ -63,7 +72,7 @@ const handleSpecificErrors = (e: any) => {
   const walletCancel = getWalletCancelMessage(e)
   if (walletCancel) {
     return new TransactionError(
-      LiFiErrorCode.TransactionCanceled,
+      LiFiErrorCode.SignatureRejected,
       walletCancel,
       e
     )

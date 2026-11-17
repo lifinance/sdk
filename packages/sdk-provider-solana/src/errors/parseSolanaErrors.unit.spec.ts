@@ -109,13 +109,15 @@ describe('parseSolanaErrors', () => {
     'Transaction canceled',
     'Transaction cancelled',
     'Transaction was canceled.',
+    'Transaction canceled\n',
+    ' Transaction canceled ',
   ])(
-    'maps the wallet cancel message %j to TransactionCanceled',
+    'maps the wallet cancel message %j to SignatureRejected',
     async (message) => {
       const parsedError = await parseSolanaErrors(new Error(message))
 
       expect(parsedError.cause).toBeInstanceOf(TransactionError)
-      expect(parsedError.cause.code).toBe(LiFiErrorCode.TransactionCanceled)
+      expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
     }
   )
 
@@ -126,7 +128,7 @@ describe('parseSolanaErrors', () => {
 
     const parsedError = await parseSolanaErrors(walletError)
 
-    expect(parsedError.code).toBe(LiFiErrorCode.TransactionCanceled)
+    expect(parsedError.code).toBe(LiFiErrorCode.SignatureRejected)
     expect(parsedError.cause.message).toBe('Transaction canceled')
     expect(parsedError.cause.cause).toBe(walletError)
   })

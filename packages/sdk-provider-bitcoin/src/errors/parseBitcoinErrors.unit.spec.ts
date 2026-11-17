@@ -48,7 +48,7 @@ describe('parseBitcoinErrors', () => {
     expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
   })
 
-  it('maps a wallet cancel that bigmi wraps to TransactionCanceled', async () => {
+  it('maps a wallet cancel that bigmi wraps to SignatureRejected', async () => {
     // A wallet's injected Unisat provider rejects with this error when the
     // user taps Cancel, and bigmi wraps it (Sentry JUMPER-FRONT-XC).
     const walletError = new Error('Transaction canceled')
@@ -57,22 +57,37 @@ describe('parseBitcoinErrors', () => {
     const parsedError = await parseBitcoinErrors(error)
 
     expect(parsedError.cause).toBeInstanceOf(TransactionError)
-    expect(parsedError.cause.code).toBe(LiFiErrorCode.TransactionCanceled)
+    expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
     expect(parsedError.cause.message).toBe('Transaction canceled')
     expect(parsedError.cause.cause).toBe(error)
+  })
+
+  it('maps a wallet cancel in the short message of a bigmi error to SignatureRejected', async () => {
+    // The Ctrl connector throws `new BaseError(response.error)`, and bigmi
+    // passes its own errors on unchanged. The message gets bigmi's footer.
+    const error = new BigmiBaseError('Transaction canceled')
+
+    const parsedError = await parseBitcoinErrors(error)
+
+    expect(parsedError.cause).toBeInstanceOf(TransactionError)
+    expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
+    expect(parsedError.cause.message).toBe('Transaction canceled')
   })
 
   it.each([
     'Transaction canceled',
     'Transaction cancelled',
     'Transaction was canceled.',
+    'Transaction canceled\n',
+    ' Transaction canceled ',
   ])(
-    'maps the wallet cancel message %j to TransactionCanceled',
+    'maps the wallet cancel message %j to SignatureRejected',
     async (message) => {
       const parsedError = await parseBitcoinErrors(new Error(message))
 
       expect(parsedError.cause).toBeInstanceOf(TransactionError)
-      expect(parsedError.cause.code).toBe(LiFiErrorCode.TransactionCanceled)
+      expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
+      expect(parsedError.cause.message).toBe(message.trim())
     }
   )
 
@@ -82,6 +97,19 @@ describe('parseBitcoinErrors', () => {
   ])('does not treat %j as a wallet cancel', async (message) => {
     const error = new BigmiBaseError('Unknown Error', {
       cause: new Error(message),
+    })
+
+    const parsedError = await parseBitcoinErrors(error)
+
+    expect(parsedError.cause).toBeInstanceOf(UnknownError)
+  })
+
+  it('does not map a bigmi error whose cause is an SDK error with a cancel message', async () => {
+    const error = new BigmiBaseError('Unknown Error', {
+      cause: new TransactionError(
+        LiFiErrorCode.TransactionFailed,
+        'Transaction canceled'
+      ),
     })
 
     const parsedError = await parseBitcoinErrors(error)
