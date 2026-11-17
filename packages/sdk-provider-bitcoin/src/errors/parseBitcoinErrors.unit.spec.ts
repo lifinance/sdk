@@ -1,3 +1,4 @@
+import { BaseError as BigmiBaseError } from '@bigmi/core'
 import {
   BaseError,
   ErrorName,
@@ -45,6 +46,58 @@ describe('parseBitcoinErrors', () => {
 
     expect(parsedError.cause).toBeInstanceOf(TransactionError)
     expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
+  })
+
+  it('maps a wallet cancel that bigmi wraps to TransactionCanceled', async () => {
+    // A wallet's injected Unisat provider rejects with this error when the
+    // user taps Cancel, and bigmi wraps it (Sentry JUMPER-FRONT-XC).
+    const walletError = new Error('Transaction canceled')
+    const error = new BigmiBaseError('Unknown Error', { cause: walletError })
+
+    const parsedError = await parseBitcoinErrors(error)
+
+    expect(parsedError.cause).toBeInstanceOf(TransactionError)
+    expect(parsedError.cause.code).toBe(LiFiErrorCode.TransactionCanceled)
+    expect(parsedError.cause.message).toBe('Transaction canceled')
+    expect(parsedError.cause.cause).toBe(error)
+  })
+
+  it.each([
+    'Transaction canceled',
+    'Transaction cancelled',
+    'Transaction was canceled.',
+  ])(
+    'maps the wallet cancel message %j to TransactionCanceled',
+    async (message) => {
+      const parsedError = await parseBitcoinErrors(new Error(message))
+
+      expect(parsedError.cause).toBeInstanceOf(TransactionError)
+      expect(parsedError.cause.code).toBe(LiFiErrorCode.TransactionCanceled)
+    }
+  )
+
+  it.each([
+    'Transaction canceled: fee rate too low',
+    'Pending transaction canceled',
+  ])('does not treat %j as a wallet cancel', async (message) => {
+    const error = new BigmiBaseError('Unknown Error', {
+      cause: new Error(message),
+    })
+
+    const parsedError = await parseBitcoinErrors(error)
+
+    expect(parsedError.cause).toBeInstanceOf(UnknownError)
+  })
+
+  it('keeps the code of an SDK error whose message is a cancel', async () => {
+    const error = new TransactionError(
+      LiFiErrorCode.TransactionFailed,
+      'Transaction canceled'
+    )
+
+    const parsedError = await parseBitcoinErrors(error)
+
+    expect(parsedError.cause).toBe(error)
   })
 
   it('does not treat an AbortError as a user rejection', async () => {

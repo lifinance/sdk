@@ -105,6 +105,63 @@ describe('parseSolanaErrors', () => {
     expect(parsedError.cause.code).toBe(code)
   })
 
+  it.each([
+    'Transaction canceled',
+    'Transaction cancelled',
+    'Transaction was canceled.',
+  ])(
+    'maps the wallet cancel message %j to TransactionCanceled',
+    async (message) => {
+      const parsedError = await parseSolanaErrors(new Error(message))
+
+      expect(parsedError.cause).toBeInstanceOf(TransactionError)
+      expect(parsedError.cause.code).toBe(LiFiErrorCode.TransactionCanceled)
+    }
+  )
+
+  it('maps a wallet cancel and keeps the wallet error as its cause', async () => {
+    // An Android in-app wallet rejects signAllTransactions with this error
+    // when the user taps Cancel (Sentry JUMPER-FRONT-BC).
+    const walletError = new Error('Transaction canceled')
+
+    const parsedError = await parseSolanaErrors(walletError)
+
+    expect(parsedError.code).toBe(LiFiErrorCode.TransactionCanceled)
+    expect(parsedError.cause.message).toBe('Transaction canceled')
+    expect(parsedError.cause.cause).toBe(walletError)
+  })
+
+  it.each([
+    'Transaction canceled: insufficient priority fee',
+    'Pending transaction canceled',
+  ])('does not treat %j as a wallet cancel', async (message) => {
+    const parsedError = await parseSolanaErrors(new Error(message))
+
+    expect(parsedError.cause).toBeInstanceOf(UnknownError)
+  })
+
+  it('keeps SendTransactionError when its message is a cancel', async () => {
+    const error = {
+      name: 'SendTransactionError',
+      message: 'Transaction canceled',
+    }
+
+    const parsedError = await parseSolanaErrors(error as any)
+
+    expect(parsedError.cause.code).toBe(LiFiErrorCode.TransactionFailed)
+  })
+
+  it('keeps the code of an SDK error whose message is a cancel', async () => {
+    const error = new TransactionError(
+      LiFiErrorCode.TransactionFailed,
+      'Transaction canceled'
+    )
+
+    const parsedError = await parseSolanaErrors(error)
+
+    expect(parsedError.cause).toBe(error)
+  })
+
   it('keeps the code of an SDK error whose message looks like a rejection', async () => {
     const error = new TransactionError(
       LiFiErrorCode.TransactionCanceled,

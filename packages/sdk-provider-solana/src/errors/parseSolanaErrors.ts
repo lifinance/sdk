@@ -41,6 +41,16 @@ const isUserRejection = (e: any): boolean =>
   (e.code === 4001 ||
     (typeof e.message === 'string' && userRejectionMessage.test(e.message)))
 
+// A wallet that reports a cancel only as this text (an Android in-app wallet,
+// on Cancel). The whole message must match: nothing says the user caused it,
+// so it maps to TransactionCanceled, not SignatureRejected.
+const walletCancelMessage = /^transaction (was )?cancell?ed\.?$/i
+
+const isWalletCancel = (e: any): boolean =>
+  !(e instanceof BaseError) &&
+  typeof e.message === 'string' &&
+  walletCancelMessage.test(e.message)
+
 const handleSpecificErrors = (e: any) => {
   if (e.name === 'WalletSignTransactionError') {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
@@ -58,6 +68,10 @@ const handleSpecificErrors = (e: any) => {
   // message quotes program logs that look like a rejection.
   if (isUserRejection(e)) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
+  }
+
+  if (isWalletCancel(e)) {
+    return new TransactionError(LiFiErrorCode.TransactionCanceled, e.message, e)
   }
 
   if (e.message?.includes('simulate')) {

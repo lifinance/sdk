@@ -60,6 +60,52 @@ afterEach(() => {
   }
 })
 
+describe('Solana wallet cancel', () => {
+  it('fails with TransactionCanceled and sends nothing when the wallet cancels with only a message', async () => {
+    const client = openPage(wallet, { rpcUrls: [network.url('read')] })
+    const recorder = recordRoute()
+    // An Android in-app wallet, on Cancel (Sentry JUMPER-FRONT-BC).
+    wallet.rejectWith = () => new Error('Transaction canceled')
+    wallet.rejectNext = 1
+
+    await expect(
+      executeRoute(client, buildRoute(network, wallet.address), {
+        updateRouteHook: recorder.updateRouteHook,
+      })
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionCanceled,
+      cause: { message: 'Transaction canceled' },
+    })
+
+    expect(wallet.signCalls).toEqual([
+      { inputs: [network.quotes[0]], outputs: [], rejected: true },
+    ])
+    expect(submitTrail(network)).toEqual([])
+    expect(apiTrail(network)).toEqual([
+      'GET /chains',
+      'POST /advanced/stepTransaction',
+    ])
+    expect(recorder.trail()).toEqual([
+      'SWAP:STARTED',
+      'SWAP:ACTION_REQUIRED',
+      'SWAP:FAILED',
+    ])
+    const failed = recorder.latest()
+    expect(failed.steps[0].execution).toMatchObject({
+      status: 'FAILED',
+      error: { code: LiFiErrorCode.TransactionCanceled },
+      actions: [
+        {
+          type: 'SWAP',
+          status: 'FAILED',
+          error: { code: LiFiErrorCode.TransactionCanceled },
+        },
+      ],
+    })
+    expect(failed.steps[0].execution?.actions[0].txHash).toBeUndefined()
+  })
+})
+
 describe('Solana user rejection', () => {
   it('fails with SignatureRejected, sends nothing, and "Try again" asks the wallet again', async () => {
     const client = openPage(wallet, { rpcUrls: [network.url('read')] })
