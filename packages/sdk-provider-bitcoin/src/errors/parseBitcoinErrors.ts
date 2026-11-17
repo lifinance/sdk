@@ -37,9 +37,15 @@ const getWalletCancelMessage = (e: any): string | undefined => {
     return undefined
   }
   // bigmi wraps a wallet error as "Unknown Error", with the wallet error as
-  // the cause. The Ctrl connector puts the wallet text in the short message
-  // of a bigmi error, which bigmi passes on unchanged.
-  for (const message of [e.message, e.shortMessage, e.cause?.message]) {
+  // the cause. A wallet that rejects with a string gives a string cause. The
+  // Ctrl connector puts the wallet text in the short message of a bigmi
+  // error, which bigmi passes on unchanged.
+  for (const message of [
+    e.message,
+    e.shortMessage,
+    e.cause?.message,
+    e.cause,
+  ]) {
     if (
       typeof message === 'string' &&
       walletCancelMessage.test(message.trim())

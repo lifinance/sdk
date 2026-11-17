@@ -62,6 +62,21 @@ describe('parseBitcoinErrors', () => {
     expect(parsedError.cause.cause).toBe(error)
   })
 
+  it('maps a wallet cancel that is a string to SignatureRejected', async () => {
+    // bigmi wraps a wallet rejection that is not an Error as "Unknown Error",
+    // with the string as the cause and without details.
+    const error = new BigmiBaseError('Unknown Error', {
+      cause: 'Transaction canceled' as unknown as Error,
+    })
+
+    const parsedError = await parseBitcoinErrors(error)
+
+    expect(parsedError.cause).toBeInstanceOf(TransactionError)
+    expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
+    expect(parsedError.cause.message).toBe('Transaction canceled')
+    expect(parsedError.cause.cause).toBe(error)
+  })
+
   it('maps a wallet cancel in the short message of a bigmi error to SignatureRejected', async () => {
     // The Ctrl connector throws `new BaseError(response.error)`, and bigmi
     // passes its own errors on unchanged. The message gets bigmi's footer.
