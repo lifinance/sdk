@@ -62,8 +62,8 @@ describe('Bitcoin wallet cancel', () => {
       )
 
     expect(error?.code).toBe(LiFiErrorCode.SignatureRejected)
-    // The wallet is asked once. bigmi would retry this error, because it has
-    // no numeric code, and each retry opens the prompt again.
+    // The wallet is asked once: the harness client sets retryCount: 0, as a
+    // connector client from @bigmi/client does.
     expect(page.signPsbt).toHaveBeenCalledTimes(1)
     expect(network.sent).toEqual([])
     expect(network.statusRequests).toEqual([])

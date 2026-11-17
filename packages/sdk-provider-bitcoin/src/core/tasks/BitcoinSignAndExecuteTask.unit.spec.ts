@@ -17,6 +17,7 @@ vi.mock('@bigmi/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@bigmi/core')>()
   return {
     ...actual,
+    signPsbt: vi.fn(),
     withTimeout: vi.fn((fn: () => Promise<unknown>) => fn()),
   }
 })
@@ -25,7 +26,7 @@ vi.mock('../../utils/isPsbtFinalized.js', () => ({
   isPsbtFinalized: vi.fn(() => true),
 }))
 
-import { TransactionNotFoundError } from '@bigmi/core'
+import { signPsbt, TransactionNotFoundError } from '@bigmi/core'
 import type { BitcoinStepExecutorContext } from '../../types.js'
 import {
   allTransportsFailed,
@@ -46,9 +47,6 @@ const SEND = 'sendrawtransaction'
 const LOOKUP = 'getrawtransaction'
 const CLEARED_KEYS = ['txHash', 'txLink', 'txHex', 'txFinal', 'taskId']
 
-/** The wallet client's `request`. The task sends it only `signPsbt`. */
-const signPsbt = vi.fn()
-
 const makeContext = (
   action: ExecutionAction
 ): {
@@ -68,7 +66,7 @@ const makeContext = (
   )
   const context = {
     step: { action: { fromAddress: SENDER } },
-    walletClient: { account: { address: SENDER }, request: signPsbt },
+    walletClient: { account: { address: SENDER } },
     publicClient: {
       request,
       // As in bigmi: `request` without options, so the fallback retries
@@ -326,24 +324,6 @@ describe('BitcoinSignAndExecuteTask write before send', () => {
       })
     }
   )
-
-  // bigmi retries an error without a numeric code, such as a wallet cancel
-  // that it wraps as "Unknown Error". Each retry opens the prompt again.
-  it('asks the wallet once, without bigmi retries', async () => {
-    const { context } = makeContext(FRESH_ACTION)
-
-    await new BitcoinSignAndExecuteTask().run(context)
-
-    expect(signPsbt.mock.calls).toEqual([
-      [
-        {
-          method: 'signPsbt',
-          params: { psbt: 'UNSIGNED_PSBT', inputsToSign: [], finalize: false },
-        },
-        { dedupe: true, retryCount: 0 },
-      ],
-    ])
-  })
 
   it('writes nothing when signing fails', async () => {
     const { context, updateAction, request } = makeContext(FRESH_ACTION)
