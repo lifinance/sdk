@@ -44,6 +44,8 @@ The file is optional. It is not part of the skill folder, because each repo has 
 - If the branch adds, changes or removes a script in any `package.json`, the summary has a
   note. Review that change: the checks run these scripts, and `pnpm -r` runs the scripts of
   each workspace package.
+- A change to a config file that a check reads (vitest, tsconfig, knip, oxlint) gets no
+  note. Look for such changes in the PR diff.
 - The script reads `heldMajors` from the bump branch. Each entry needs `name` and `reason`.
   An unknown key stops the run (exit 2), so that a typing error does not pass without a
   message.

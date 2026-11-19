@@ -2574,12 +2574,13 @@ function parseConfig(text, where) {
 function scriptChanges(wt) {
   let files = []
   try {
-    files = execFileSync('git', ['diff', '--name-only', MAIN, '--'], {
+    // -z: git quotes a path with non-ASCII bytes in the plain list.
+    files = execFileSync('git', ['diff', '-z', '--name-only', MAIN, '--'], {
       cwd: wt,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     })
-      .split('\n')
+      .split('\0')
       .filter((f) => basename(f) === 'package.json')
   } catch {}
   const scriptsOf = (text) => {

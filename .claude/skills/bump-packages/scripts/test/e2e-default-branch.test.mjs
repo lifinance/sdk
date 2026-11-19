@@ -460,6 +460,48 @@ describe(
       assert.doesNotMatch(notes, /^package\.json on this branch/m)
     })
 
+    test('a script change in a package.json with a non-ASCII path gets a note', async () => {
+      const fx = fixture()
+      const rel = 'docs/démo/package.json'
+      pushToMain(
+        fx,
+        {
+          [rel]: `${JSON.stringify({ private: true, scripts: { x: 'node -e 0' } })}\n`,
+        },
+        'chore: a doc demo'
+      )
+      const wt = join(fx.main, '.claude', 'worktrees', 'demo-script')
+      fx.git(fx.main, 'fetch', '-q', 'origin')
+      fx.git(
+        fx.main,
+        'worktree',
+        'add',
+        '-q',
+        '-b',
+        'chore/bump-deps-20991226',
+        wt,
+        'origin/main'
+      )
+      fs.writeFileSync(
+        join(wt, rel),
+        `${JSON.stringify({ private: true, scripts: { x: 'true' } })}\n`
+      )
+      fx.git(
+        wt,
+        'commit',
+        '-q',
+        '--no-verify',
+        '-am',
+        'chore: edit the demo script'
+      )
+      const r = await runBump(fx, '--worktree', wt, '--no-push')
+      assert.match(
+        r.json.notes.join('\n'),
+        /docs\/démo\/package\.json on this branch changes the scripts x /,
+        why(r)
+      )
+    })
+
     test('test: a branch that adds test:unit still runs the test of the default branch', async () => {
       const fx = fixture()
       const wt = editedBranch(fx, 'unit-added', (s) => {
