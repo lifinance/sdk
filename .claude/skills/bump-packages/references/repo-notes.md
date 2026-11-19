@@ -16,7 +16,8 @@ The file is optional. It is not part of the skill folder, because each repo has 
       "reason": "vue-tsc and svelte-check do not support TypeScript 7. Remove when they do."
     }
   ],
-  "fastTrackMinAgeHours": 6
+  "fastTrackMinAgeHours": 6,
+  "checks": ["test:integration", "test:snapshots"]
 }
 ```
 
@@ -27,6 +28,11 @@ The file is optional. It is not part of the skill folder, because each repo has 
   later reader knows when to remove the entry.
 - `fastTrackMinAgeHours`: the minimum age for an automatic fast-track (default 6). The
   script reads this value from `main`, so a change applies after it is merged.
+- `checks`: more `package.json` scripts to run after the build, besides the ones that the
+  script finds by name (`build`, `check`, `check:types`, `check:circular-deps`,
+  `knip:check`, `test:unit` or `test`). The script runs the union of the list on `main` and
+  the list on the branch, so a branch can add a check but cannot remove one. A name
+  without a script is skipped.
 - The script reads `heldMajors` from the bump branch. Each entry needs `name` and `reason`.
   An unknown key stops the run (exit 2), so that a typing error does not pass without a
   message.
@@ -42,6 +48,26 @@ have one copy in an app. Two copies break at runtime ("Execution data not found"
 a new second copy. The `privy` examples in widget carry a known second `wagmi` copy.
 
 In jumper-widget, each `@lifi/sdk-provider-*` pins one exact `@lifi/sdk`. They move together.
+
+## jumper-frontend
+
+- The default branch is `develop`. `main` is the production branch, and it is old.
+- `check` and `check:types` in `package.json` give the script the lint, format and type
+  checks of CI. `check:types` runs `next typegen` first, as CI does. The other test suites
+  of CI are in `checks` of `.claude/bump-packages.json`.
+- The "collapse duplicate copies" overrides use caret ranges (for example `viem: ^2.58.1`),
+  so that the script moves each one to the newest aged version of its major. An exact pin
+  with a reason in its comment is a hold: `@coinbase/cdp-sdk`, `eslint`, `zod` and the
+  WalletConnect and Reown family. `@next/env` must match `next`: the two publish together, and
+  the script moves both in one run. If you hold `next`, hold `@next/env` too.
+- The first-party overrides (`@lifi/sdk`, `@lifi/sdk-provider-ethereum`, and the
+  `npm:@jumperexchange/*` aliases) stay exact. Move them by hand, together with
+  `@jumperexchange/widget`: read the versions that the new widget release asks for
+  (`npm view @jumperexchange/widget@<version> dependencies --registry https://npm.pkg.github.com`).
+- `@coinbase/cdp-sdk` 1.53 and later imports optional `@x402/*` peers, which Turbopack
+  treats as build errors. Keep the hold until `pnpm build` passes with a newer version.
+- The packages from GitHub Packages (`@jumperexchange/*`) need a token in `~/.npmrc`. Never
+  copy the token into a worktree, a log, or the PR text.
 
 ## e2e runs (only for an approved runtime or UI major)
 

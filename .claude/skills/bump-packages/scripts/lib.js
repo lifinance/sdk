@@ -1119,14 +1119,20 @@ export function overrideUpdate(o, view, minAgeMs, nowMs, isExempt) {
 export function resolveLockfileBases(baseOpt, git) {
   let trustAnchor
   try {
-    trustAnchor = git(['merge-base', 'HEAD', 'origin/main']).trim()
+    trustAnchor = git([
+      'merge-base',
+      'HEAD',
+      process.env.BUMP_BASE_REF || 'origin/main',
+    ]).trim()
   } catch {
     throw new Error(
-      'Cannot find the merge-base of HEAD and origin/main (the trust anchor). Run git fetch --no-prune-tags origin, then run again.'
+      `Cannot find the merge-base of HEAD and ${process.env.BUMP_BASE_REF || 'origin/main'} (the trust anchor). Run git fetch --no-prune-tags origin, then run again.`
     )
   }
   if (!trustAnchor) {
-    throw new Error('The merge-base of HEAD and origin/main is empty.')
+    throw new Error(
+      `The merge-base of HEAD and ${process.env.BUMP_BASE_REF || 'origin/main'} is empty.`
+    )
   }
   const compareBase = baseOpt || trustAnchor
   try {

@@ -95,6 +95,9 @@ import {
 } from './security.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
+// The default branch of origin (`origin/HEAD`), set in setupGit. Child scripts read it
+// from BUMP_BASE_REF.
+let MAIN = 'origin/main'
 const USAGE = `Usage: node bump.mjs --repo <main checkout> [options]
 
   --dry-run                 analyze and print the plan; change nothing
@@ -313,7 +316,7 @@ function summary(code, message) {
   if (code !== EXIT.ok && R.dirtied && hasChanges(R.worktree)) {
     // F3: discard only the uncommitted changes; keep a fix commit and a merge commit.
     w(
-      `\n${R.mergeCommit ? `The run made one local commit, the merge of origin/main (${R.mergeCommit.slice(0, 9)}); the next run pushes it. Nothing else` : 'Nothing'} was committed. The worktree has the changes. To discard them:\n  git -C ${sq(R.worktree)} reset --hard HEAD && git -C ${sq(R.worktree)} clean -fd -- .changeset`
+      `\n${R.mergeCommit ? `The run made one local commit, the merge of ${MAIN} (${R.mergeCommit.slice(0, 9)}); the next run pushes it. Nothing else` : 'Nothing'} was committed. The worktree has the changes. To discard them:\n  git -C ${sq(R.worktree)} reset --hard HEAD && git -C ${sq(R.worktree)} clean -fd -- .changeset`
     )
   }
   w(`\nRerun: ${R.rerun}\n`)
@@ -484,8 +487,17 @@ async function setupGit() {
     '--short',
     'refs/remotes/origin/HEAD',
   ])
-  R.defaultBranch =
-    head.code === 0 ? head.out.trim().replace(/^origin\//, '') : 'main'
+  if (head.code !== 0 || !head.out.trim()) {
+    finish(
+      EXIT.cannotRun,
+      'origin/HEAD is not set, so the default branch is unknown. Run: git -C <repo> remote set-head origin --auto'
+    )
+  }
+  R.defaultBranch = head.out.trim().replace(/^origin\//, '')
+  MAIN = `origin/${R.defaultBranch}`
+  // ENV (the environment of every child) is a copy, so set the value there too.
+  process.env.BUMP_BASE_REF = MAIN
+  ENV.BUMP_BASE_REF = MAIN
   const worktrees = (
     await must('git', ['worktree', 'list', '--porcelain'], { cwd: repo })
   )
@@ -547,7 +559,7 @@ async function setupGit() {
       )
     } else {
       R.notes.push(
-        `Open bump PR #${openPr.number} exists, but it has no worktree on this machine; this plan is against origin/main.`
+        `Open bump PR #${openPr.number} exists, but it has no worktree on this machine; this plan is against ${MAIN}.`
       )
     }
   }
@@ -588,7 +600,7 @@ async function setupGit() {
     }
     if (R.dryRun) {
       R.notes.push(
-        'Dry run: the plan comes from the branch head; origin/main was not merged.'
+        `Dry run: the plan comes from the branch head; ${MAIN} was not merged.`
       )
       return { repo, ghRepo, wt }
     }
@@ -600,7 +612,7 @@ async function setupGit() {
   if (R.dryRun) {
     // A dry run makes no branch: a temporary detached worktree, removed on exit.
     const tmp = join(R.out, 'dry-run-worktree')
-    await must('git', ['worktree', 'add', '--detach', tmp, 'origin/main'], {
+    await must('git', ['worktree', 'add', '--detach', tmp, MAIN], {
       cwd: repo,
     })
     CLEANUPS.add(() => removeWorktree(repo, tmp))
@@ -611,7 +623,7 @@ async function setupGit() {
     ).trim()
     R.base = null
     R.notes.push(
-      'Dry run: a temporary detached worktree from origin/main; it is removed at the end.'
+      `Dry run: a temporary detached worktree from ${MAIN}; it is removed at the end.`
     )
     return { repo, ghRepo, wt: tmp }
   }
@@ -644,15 +656,7 @@ async function setupGit() {
   guard()
   await must(
     'git',
-    [
-      'worktree',
-      'add',
-      '--no-track',
-      '-b',
-      R.branch,
-      R.worktree,
-      'origin/main',
-    ],
+    ['worktree', 'add', '--no-track', '-b', R.branch, R.worktree, MAIN],
     { cwd: repo }
   )
   R.worktreeKept = true
@@ -668,10 +672,10 @@ async function setupGit() {
 // pnpm-lock.yaml takes main's lockfile (step 5 regenerates it); any other conflict is
 // exit 2.
 async function mergeMain(wt) {
-  if (await gitOk(wt, ['merge-base', '--is-ancestor', 'origin/main', 'HEAD'])) {
+  if (await gitOk(wt, ['merge-base', '--is-ancestor', MAIN, 'HEAD'])) {
     return
   }
-  const m = await run('git', ['merge', '--no-ff', '--no-edit', 'origin/main'], {
+  const m = await run('git', ['merge', '--no-ff', '--no-edit', MAIN], {
     cwd: wt,
   })
   if (m.code !== 0) {
@@ -687,20 +691,20 @@ async function mergeMain(wt) {
       await git(wt, ['merge', '--abort'])
       finish(
         EXIT.cannotRun,
-        `merging origin/main conflicts outside the lockfile: ${conflicts.join(', ') || m.err.trim()}. Merge by hand: git -C '${wt}' merge origin/main; resolve those files (for pnpm-lock.yaml take main's copy: git checkout --theirs pnpm-lock.yaml); commit the merge; then run again.`
+        `merging ${MAIN} conflicts outside the lockfile: ${conflicts.join(', ') || m.err.trim()}. Merge by hand: git -C '${wt}' merge ${MAIN}; resolve those files (for pnpm-lock.yaml take main's copy: git checkout --theirs pnpm-lock.yaml); commit the merge; then run again.`
       )
     }
     await must('git', ['checkout', '--theirs', '--', ...conflicts], { cwd: wt })
     await must('git', ['add', '--', ...conflicts], { cwd: wt })
     await must('git', ['commit', '--no-verify', '--no-edit'], { cwd: wt })
     R.notes.push(
-      "The merge of origin/main had a conflict only in pnpm-lock.yaml: main's lockfile was taken, and the regeneration rewrites it."
+      `The merge of ${MAIN} had a conflict only in pnpm-lock.yaml: its lockfile was taken, and the regeneration rewrites it.`
     )
   }
   R.mergedMain = true
   R.mergeCommit = (await must('git', ['rev-parse', 'HEAD'], { cwd: wt })).trim()
   R.notes.push(
-    `Merged origin/main into the branch (local merge commit ${R.mergeCommit.slice(0, 9)}).`
+    `Merged ${MAIN} into the branch (local merge commit ${R.mergeCommit.slice(0, 9)}).`
   )
 }
 
@@ -714,17 +718,17 @@ async function checkGate(wt) {
       ...(await must('git', ['ls-files', '*pnpm-workspace.yaml'], { cwd: wt }))
         .split('\n')
         .filter(isYaml),
-      ...(await git(wt, ['ls-tree', '-r', '--name-only', 'origin/main'])).out
+      ...(await git(wt, ['ls-tree', '-r', '--name-only', MAIN])).out
         .split('\n')
         .filter(isYaml),
     ].filter(Boolean)
   )
   for (const f of files) {
     const branch = read(join(wt, f)) ?? ''
-    const main = (await git(wt, ['show', `origin/main:${f}`])).out
+    const main = (await git(wt, ['show', `${MAIN}:${f}`])).out
     for (const [where, text] of [
       ['worktree', branch],
-      ['origin/main', main],
+      [MAIN, main],
     ]) {
       const problem = gateYamlProblem(text)
       if (problem) {
@@ -736,7 +740,7 @@ async function checkGate(wt) {
     if ((has(main) && !has(branch)) || b < m) {
       finish(
         EXIT.cannotRun,
-        `${f} lowers the release-age gate: minimumReleaseAge ${has(branch) ? b : '(removed)'} on the branch, ${m} on origin/main. Restore it, then run again.`
+        `${f} lowers the release-age gate: minimumReleaseAge ${has(branch) ? b : '(removed)'} on the branch, ${m} on ${MAIN}. Restore it, then run again.`
       )
     }
   }
@@ -1580,14 +1584,11 @@ async function earlierExcludes(projects, wt) {
         (await git(wt, ['show', `${ref}:${path}`])).out,
         'minimumReleaseAgeExclude'
       )
-    const { exact, other } = branchExcludes(
-      await at('HEAD'),
-      await at('origin/main')
-    )
+    const { exact, other } = branchExcludes(await at('HEAD'), await at(MAIN))
     const removed = new Set(p.removedReal ?? [])
     for (const x of other.filter((e) => !removed.has(e))) {
       stop.push(
-        `exclude entry${where} that origin/main does not have and that is not one exact version: ${x}`
+        `exclude entry${where} that ${MAIN} does not have and that is not one exact version: ${x}`
       )
     }
     p.earlier = exact.filter((e) => !removed.has(e))
@@ -1762,7 +1763,7 @@ async function writeChangeset(wt, root) {
   }
   // A rerun on a PR: the changesets that the branch added get the new versions first.
   const mb = (
-    await must('git', ['merge-base', 'HEAD', 'origin/main'], { cwd: wt })
+    await must('git', ['merge-base', 'HEAD', MAIN], { cwd: wt })
   ).trim()
   const added = (
     await must(
@@ -1865,6 +1866,12 @@ function planChecks(wt, projects, out) {
     )
   }
   pnpmTask('dedupe --check', ['dedupe', '--check'])
+  // Extra scripts from `checks` in .claude/bump-packages.json.
+  for (const name of CONFIG.checks ?? []) {
+    if (has(name) && !tasks.some((t) => t.name === name)) {
+      pnpmTask(name, [name], after)
+    }
+  }
   // A13: registry signatures of every package in the lockfile.
   add('signatures', pnpmIn(wt, ['audit', 'signatures']), async () => {
     const r = await run('pnpm', ['audit', 'signatures'], {
@@ -1979,7 +1986,7 @@ async function baseline(repo, wt, failed, projects, out) {
       c.baselineWhy = why
     }
   }
-  const base = await git(wt, ['merge-base', 'HEAD', 'origin/main'])
+  const base = await git(wt, ['merge-base', 'HEAD', MAIN])
   const add =
     base.code === 0
       ? await run(
@@ -1989,7 +1996,7 @@ async function baseline(repo, wt, failed, projects, out) {
         )
       : base
   if (add.code !== 0) {
-    return unknown('no worktree of the merge-base with origin/main')
+    return unknown(`no worktree of the merge-base with ${MAIN}`)
   }
   const remove = () => removeWorktree(repo, dir)
   CLEANUPS.add(remove)
@@ -2177,7 +2184,7 @@ async function commitAll(wt, projects) {
 // have, and the toolchain lines (packageManager, changed `.github` lines).
 async function prState(wt, projects) {
   const mb = (
-    await must('git', ['merge-base', 'HEAD', 'origin/main'], { cwd: wt })
+    await must('git', ['merge-base', 'HEAD', MAIN], { cwd: wt })
   ).trim()
   const show = async (ref, f) => {
     const r = await git(wt, ['show', `${ref}:${f}`])
@@ -2232,7 +2239,7 @@ async function prState(wt, projects) {
     const path = `${p.rel === '.' ? '' : `${p.rel}/`}pnpm-workspace.yaml`
     const [head, main] = await Promise.all([
       show('HEAD', path),
-      show('origin/main', path),
+      show(MAIN, path),
     ])
     const { exact, other } = branchExcludes(
       yamlList(head ?? '', 'minimumReleaseAgeExclude'),
@@ -2316,7 +2323,8 @@ async function pushAndPr(wt, ghRepo, out, projects) {
       : null
   const template =
     read(join(wt, '.github', 'pull_request_template.md')) ??
-    read(join(wt, '.github', 'PULL_REQUEST_TEMPLATE.md'))
+    read(join(wt, '.github', 'PULL_REQUEST_TEMPLATE.md')) ??
+    read(join(wt, '.github', 'pull-request-template.md'))
   // F4, M4: smaller lists until the body fits; then cut the block. Never exit 2 here:
   // the commits exist already.
   const wrap = (block) =>
@@ -2360,7 +2368,7 @@ async function pushAndPr(wt, ghRepo, out, projects) {
         '--repo',
         ghRepo,
         '--base',
-        'main',
+        R.defaultBranch,
         '--head',
         R.branch,
         '--title',
@@ -2376,7 +2384,7 @@ async function pushAndPr(wt, ghRepo, out, projects) {
 
 // --- config -------------------------------------------------------------------------
 
-let CONFIG = { heldMajors: [], fastTrackMinAgeHours: null }
+let CONFIG = { heldMajors: [], fastTrackMinAgeHours: null, checks: [] }
 
 // `.claude/bump-packages.json` of the worktree (A10). A malformed file or an unknown key
 // is exit 2.
@@ -2394,8 +2402,8 @@ function parseConfig(text, where) {
     bad('not a JSON object')
   }
   for (const k of Object.keys(c)) {
-    if (k !== 'heldMajors' && k !== 'fastTrackMinAgeHours') {
-      bad(`unknown key ${k} (known: heldMajors, fastTrackMinAgeHours)`)
+    if (!['heldMajors', 'fastTrackMinAgeHours', 'checks'].includes(k)) {
+      bad(`unknown key ${k} (known: heldMajors, fastTrackMinAgeHours, checks)`)
     }
   }
   const held = c.heldMajors ?? []
@@ -2420,7 +2428,16 @@ function parseConfig(text, where) {
   if (ft !== undefined && !(Number.isFinite(ft) && ft >= 0)) {
     bad('fastTrackMinAgeHours must be a number of hours (0 or more)')
   }
-  return { heldMajors: held, fastTrackMinAgeHours: ft ?? null }
+  const checks = c.checks ?? []
+  if (
+    !Array.isArray(checks) ||
+    !checks.every(
+      (x) => typeof x === 'string' && /^[a-z0-9][a-z0-9:_-]*$/i.test(x)
+    )
+  ) {
+    bad('checks must be a list of package.json script names')
+  }
+  return { heldMajors: held, fastTrackMinAgeHours: ft ?? null, checks }
 }
 
 // A10: `heldMajors` from the worktree's copy. L4: `fastTrackMinAgeHours` only from
@@ -2433,24 +2450,28 @@ function loadConfig(wt) {
   try {
     mainText = execFileSync(
       'git',
-      ['show', 'origin/main:.claude/bump-packages.json'],
+      ['show', `${MAIN}:.claude/bump-packages.json`],
       { cwd: wt, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
     )
   } catch {}
   const main =
     mainText == null
       ? null
-      : parseConfig(mainText, 'origin/main:.claude/bump-packages.json')
+      : parseConfig(mainText, `${MAIN}:.claude/bump-packages.json`)
   const ft = main?.fastTrackMinAgeHours ?? null
   if (
     branch?.fastTrackMinAgeHours != null &&
     branch.fastTrackMinAgeHours !== (ft ?? 6)
   ) {
     R.notes.push(
-      `fastTrackMinAgeHours ${branch.fastTrackMinAgeHours} on the branch is not used: the value comes from origin/main (${ft ?? 6}).`
+      `fastTrackMinAgeHours ${branch.fastTrackMinAgeHours} on the branch is not used: the value comes from ${MAIN} (${ft ?? 6}).`
     )
   }
-  CONFIG = { heldMajors: branch?.heldMajors ?? [], fastTrackMinAgeHours: ft }
+  CONFIG = {
+    heldMajors: branch?.heldMajors ?? [],
+    fastTrackMinAgeHours: ft,
+    checks: [...new Set([...(main?.checks ?? []), ...(branch?.checks ?? [])])],
+  }
   R.fastTrackMinAgeHours = ft ?? 6
 }
 
@@ -2463,12 +2484,7 @@ const total = (t0) => {
 // HEAD has commits that origin does not have (on the PR branch, or on origin/main for a
 // branch that was never pushed).
 const unpushed = async (wt) =>
-  !(await gitOk(wt, [
-    'merge-base',
-    '--is-ancestor',
-    'HEAD',
-    R.base ?? 'origin/main',
-  ]))
+  !(await gitOk(wt, ['merge-base', '--is-ancestor', 'HEAD', R.base ?? MAIN]))
 
 // New mode with nothing to bump: the worktree and the branch of this run go (A8).
 function removeEmptyWorktree(repo, wt) {
