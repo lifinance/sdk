@@ -558,6 +558,14 @@ async function setupGit() {
       )
     }
     const branch = w.branch?.replace(/^refs\/heads\//, '') ?? null
+    // The branch of a PR that pickBumpPr rejected (a fork, another base): never push to it.
+    const other = branch && rejected.find((r) => r.headRefName === branch)
+    if (other) {
+      finish(
+        EXIT.cannotRun,
+        `--worktree is on ${branch}, the branch of open PR #${other.number}, which the script does not continue: ${other.why}. Close that PR, or use a worktree on another branch.`
+      )
+    }
     if (openPr && openPr.headRefName !== branch) {
       finish(
         EXIT.cannotRun,
@@ -1848,14 +1856,21 @@ function planChecks(wt, projects, out) {
     )
   const after = { afterBuild: true }
   // The build check: `build`, or the script that `build` names in the config.
+  // loadConfig checked that the script is on the default branch. A branch that removes it
+  // fails the build check: the check is never skipped.
   const buildScript = CONFIG.build ?? 'build'
   if (buildScript !== 'build' && !has(buildScript)) {
-    finish(
-      EXIT.cannotRun,
-      `.claude/bump-packages.json: build names ${buildScript}, but package.json has no such script. Fix the key on ${MAIN}.`
+    add(
+      buildScript,
+      pnpmIn(wt, ['run', buildScript]),
+      async () => {
+        const err = `package.json on this branch has no script ${buildScript}, which .claude/bump-packages.json on ${MAIN} names as the build check.`
+        writeFileSync(logOf(out, buildScript), `${err}\n`)
+        return { code: 1, out: '', err, seconds: 0 }
+      },
+      { build: true }
     )
-  }
-  if (has(buildScript)) {
+  } else if (has(buildScript)) {
     // `pnpm run`: a script name such as `publish` must not start a pnpm command.
     pnpmTask(
       buildScript,
@@ -1870,7 +1885,7 @@ function planChecks(wt, projects, out) {
     // `pnpm -r` leaves out the root project. In a workspace with only the root
     // (`packages: ['.']`), it matches no project and passes without a check.
     const wsText = read(join(wt, 'pnpm-workspace.yaml')) ?? ''
-    const flow = /^packages:\s*\[(.*)\]\s*$/m.exec(wsText)
+    const flow = /^packages:\s*\[(.*)\]\s*(#.*)?$/m.exec(wsText)
     const pkgs = flow
       ? flow[1]
           .split(',')
@@ -1878,7 +1893,11 @@ function planChecks(wt, projects, out) {
           .filter(Boolean)
       : yamlList(wsText, 'packages')
     const isRoot = (x) => x === '.' || x === './'
-    const rootOnly = pkgs.every(isRoot)
+    // Root-only only when the list is read and has only the root, or when there is no
+    // `packages:` key. A list in a form that the script cannot read runs `-r` with the root.
+    const listed = /^packages:/m.test(wsText)
+    const unread = listed && !pkgs.length
+    const rootOnly = !unread && pkgs.every(isRoot)
     pnpmTask(
       'check:types',
       rootOnly
@@ -1886,7 +1905,9 @@ function planChecks(wt, projects, out) {
         : [
             '-r',
             // `-r` leaves out the root unless the workspace lists it.
-            ...(pkgs.some(isRoot) ? ['--include-workspace-root'] : []),
+            ...(unread || pkgs.some(isRoot)
+              ? ['--include-workspace-root']
+              : []),
             '--parallel',
             '--no-bail',
             'check:types',
@@ -2538,6 +2559,24 @@ function loadConfig(wt) {
     )
   }
   const build = main?.build ?? 'build'
+  if (build !== 'build') {
+    let scripts = null
+    try {
+      scripts = JSON.parse(
+        execFileSync('git', ['show', `${MAIN}:package.json`], {
+          cwd: wt,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore'],
+        })
+      ).scripts
+    } catch {}
+    if (!scripts?.[build]) {
+      finish(
+        EXIT.cannotRun,
+        `${MAIN}:.claude/bump-packages.json: build names ${build}, but package.json on ${MAIN} has no such script. Fix the key on ${MAIN}.`
+      )
+    }
+  }
   if (branch?.build != null && branch.build !== build) {
     R.notes.push(
       `the build check on the branch (${branch.build}) is not used: the value comes from ${MAIN} (${build}).`

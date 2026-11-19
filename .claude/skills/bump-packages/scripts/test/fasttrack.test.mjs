@@ -769,6 +769,20 @@ test('overrideUpdate: a commented exact pin below its own lower bound is a hold;
     ),
     null
   )
+  // An exclusive bound: a pin equal to it is below the range too.
+  assert.equal(
+    up(
+      {
+        key: 'zod@>4.6.5',
+        value: '4.6.5',
+        name: 'zod',
+        kind: 'range',
+        reason: '4.6.6+ breaks a check',
+      },
+      zod
+    ),
+    null
+  )
   const pb = view({ '4.0.3': 900, '4.0.5': 300 })
   assert.equal(
     up(

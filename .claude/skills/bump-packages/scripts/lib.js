@@ -1099,14 +1099,14 @@ export function overrideUpdate(o, view, minAgeMs, nowMs, isExempt) {
     if (o.kind === 'whole' && o.reason) {
       return null // a commented exact pin is a hold
     }
-    // A commented selector that pins below its own lower bound (`zod@>=4.6.6: 4.6.5`)
-    // holds the package below that bound: never propose to move it.
-    const lower = /@>=?\s*v?(\d+\.\d+\.\d+)$/.exec(o.key)
+    // A commented selector that pins below its own lower bound (`zod@>=4.6.6: 4.6.5`,
+    // or `zod@>4.6.5: 4.6.5`) holds the package below that bound: never propose to move it.
+    const lower = /@(>=?)\s*v?(\d+\.\d+\.\d+)$/.exec(o.key)
     if (
       o.kind === 'range' &&
       o.reason &&
       lower &&
-      cmpRaw(o.value, lower[1]) < 0
+      cmpRaw(o.value, lower[2]) < (lower[1] === '>' ? 1 : 0)
     ) {
       return null
     }

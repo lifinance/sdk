@@ -208,7 +208,7 @@ describe(
         {
           'package.json': `${JSON.stringify(pj, null, 2)}\n`,
           'pnpm-workspace.yaml':
-            "packages: ['packages/*']\nminimumReleaseAge: 1440\n",
+            "packages: ['packages/*'] # apps\nminimumReleaseAge: 1440\n",
         },
         'chore: a flow-style packages list'
       )
@@ -234,7 +234,7 @@ describe(
       assert.equal(r.code, 2, why(r))
       assert.match(
         r.json.message,
-        /build names build:missing, but package\.json has no such script/
+        /build names build:missing, but package\.json on origin\/main has no such script/
       )
     })
 
@@ -255,6 +255,91 @@ describe(
       const types = r.json.checks.find((c) => c.name === 'check:types')
       assert.match(types?.cmd ?? '', / -r --include-workspace-root /, why(r))
       assert.equal(types.ok, false)
+    })
+
+    test('a packages list that the script cannot read is not root-only', async () => {
+      const fx = fixture()
+      pushToMain(
+        fx,
+        {
+          'pnpm-workspace.yaml':
+            "packages: [\n    'packages/*',\n  ]\nminimumReleaseAge: 1440\n",
+        },
+        'chore: a flow list on more than one line'
+      )
+      const r = await runBump(fx, '--no-push')
+      const types = r.json.checks.find((c) => c.name === 'check:types')
+      assert.match(types?.cmd ?? '', / -r --include-workspace-root /, why(r))
+    })
+
+    test('build: a branch without the build script fails the build check', async () => {
+      const fx = fixture()
+      const pj = readJson(join(fx.main, 'package.json'))
+      pj.scripts['build:compile'] = 'node -e 0'
+      pushToMain(
+        fx,
+        {
+          'package.json': `${JSON.stringify(pj, null, 2)}\n`,
+          '.claude/bump-packages.json': `${JSON.stringify({ build: 'build:compile' })}\n`,
+        },
+        'chore: a compile-only build check'
+      )
+      const wt = join(fx.main, '.claude', 'worktrees', 'bump-no-build')
+      fx.git(fx.main, 'fetch', '-q', 'origin')
+      fx.git(
+        fx.main,
+        'worktree',
+        'add',
+        '-q',
+        '-b',
+        'chore/bump-deps-20991228',
+        wt,
+        'origin/main'
+      )
+      const pk = readJson(join(wt, 'package.json'))
+      delete pk.scripts['build:compile']
+      fs.writeFileSync(
+        join(wt, 'package.json'),
+        `${JSON.stringify(pk, null, 2)}\n`
+      )
+      fx.git(
+        wt,
+        'commit',
+        '-q',
+        '--no-verify',
+        '-am',
+        'chore: drop the build script'
+      )
+      const r = await runBump(fx, '--worktree', wt, '--no-push')
+      assert.equal(r.code, 4, why(r))
+      const build = r.json.checks.find((c) => c.name === 'build:compile')
+      assert.equal(build?.ok, false, why(r))
+    })
+
+    test('--worktree on the branch of a bump PR that is not reused: exit 2', async () => {
+      const branch = 'chore/bump-deps-20261101'
+      const prs = [
+        {
+          number: 5,
+          state: 'OPEN',
+          title: 'chore: bump packages',
+          headRefName: branch,
+          baseRefName: 'production',
+          isCrossRepository: false,
+          headRepositoryOwner: { login: 'acme' },
+          body: '',
+        },
+      ]
+      const fx = fixture({ prs })
+      const wt = join(fx.main, '.claude', 'worktrees', 'bump-pr5')
+      fx.git(fx.main, 'fetch', '-q', 'origin')
+      fx.git(fx.main, 'worktree', 'add', '-q', '-b', branch, wt, 'origin/main')
+      const r = await runBump(fx, '--worktree', wt, '--dry-run')
+      assert.equal(r.code, 2, why(r))
+      assert.match(
+        r.json.message,
+        /the branch of open PR #5, which the script does not continue: base production is not the default branch main/
+      )
     })
 
     test('checks: extra package.json scripts run; a bad value is exit 2', async () => {
