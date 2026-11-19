@@ -1,5 +1,12 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.3.1
+
+### Patch Changes
+
+- [#557](https://github.com/lifinance/sdk/pull/557) [`252373d`](https://github.com/lifinance/sdk/commit/252373dfad29ce3bbca179c12eee7e69a217df09) Thanks [@chybisov](https://github.com/chybisov)! - Update `@bigmi/core` to 0.9.5.
+  Update `viem` to 2.58.0.
+
 ## 4.3.0
 
 ### Minor Changes

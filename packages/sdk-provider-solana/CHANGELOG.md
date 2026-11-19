@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-solana
 
+## 4.3.9
+
+### Patch Changes
+
+- [#555](https://github.com/lifinance/sdk/pull/555) [`e2541bd`](https://github.com/lifinance/sdk/commit/e2541bde4b5fcd6b73d2711644b4aa86216a0362) Thanks [@chybisov](https://github.com/chybisov)! - A wallet error with only the text "Transaction canceled" now gets the code `SignatureRejected` (1012), not `UnknownError` (1000). The SDK already uses this code when the user rejects a sign request. Apps can then show the rejection message and do not report the cancel as a failure.
+
 ## 4.3.8
 
 ### Patch Changes
