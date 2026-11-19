@@ -1828,8 +1828,10 @@ function planChecks(wt, projects, out) {
       extra
     )
   const after = { afterBuild: true }
-  if (has('build')) {
-    pnpmTask('build', ['build'], { build: true })
+  // The build check: `build`, or the script that `build` names in the config.
+  const buildScript = CONFIG.build ?? 'build'
+  if (has(buildScript)) {
+    pnpmTask(buildScript, [buildScript], { build: true })
   }
   if (has('check')) {
     pnpmTask('check', ['check'])
@@ -2384,7 +2386,12 @@ async function pushAndPr(wt, ghRepo, out, projects) {
 
 // --- config -------------------------------------------------------------------------
 
-let CONFIG = { heldMajors: [], fastTrackMinAgeHours: null, checks: [] }
+let CONFIG = {
+  heldMajors: [],
+  fastTrackMinAgeHours: null,
+  checks: [],
+  build: null,
+}
 
 // `.claude/bump-packages.json` of the worktree (A10). A malformed file or an unknown key
 // is exit 2.
@@ -2402,8 +2409,12 @@ function parseConfig(text, where) {
     bad('not a JSON object')
   }
   for (const k of Object.keys(c)) {
-    if (!['heldMajors', 'fastTrackMinAgeHours', 'checks'].includes(k)) {
-      bad(`unknown key ${k} (known: heldMajors, fastTrackMinAgeHours, checks)`)
+    if (
+      !['heldMajors', 'fastTrackMinAgeHours', 'checks', 'build'].includes(k)
+    ) {
+      bad(
+        `unknown key ${k} (known: heldMajors, fastTrackMinAgeHours, checks, build)`
+      )
     }
   }
   const held = c.heldMajors ?? []
@@ -2437,11 +2448,19 @@ function parseConfig(text, where) {
   ) {
     bad('checks must be a list of package.json script names')
   }
-  return { heldMajors: held, fastTrackMinAgeHours: ft ?? null, checks }
+  const build = c.build ?? null
+  if (
+    build !== null &&
+    !(typeof build === 'string' && /^[a-z0-9][a-z0-9:_-]*$/i.test(build))
+  ) {
+    bad('build must be the name of one package.json script')
+  }
+  return { heldMajors: held, fastTrackMinAgeHours: ft ?? null, checks, build }
 }
 
-// A10: `heldMajors` from the worktree's copy. L4: `fastTrackMinAgeHours` only from
-// origin/main's copy (default 6): a control is lowered only by a merged change on main.
+// A10: `heldMajors` from the worktree's copy. L4: `fastTrackMinAgeHours` and `build` only
+// from the default branch's copy (default 6 and `build`): a control is lowered only by a
+// merged change. `checks`: the union of both copies.
 function loadConfig(wt) {
   const file = join(wt, '.claude', 'bump-packages.json')
   const text = read(file)
@@ -2467,9 +2486,16 @@ function loadConfig(wt) {
       `fastTrackMinAgeHours ${branch.fastTrackMinAgeHours} on the branch is not used: the value comes from ${MAIN} (${ft ?? 6}).`
     )
   }
+  const build = main?.build ?? 'build'
+  if (branch?.build != null && branch.build !== build) {
+    R.notes.push(
+      `the build check on the branch (${branch.build}) is not used: the value comes from ${MAIN} (${build}).`
+    )
+  }
   CONFIG = {
     heldMajors: branch?.heldMajors ?? [],
     fastTrackMinAgeHours: ft,
+    build,
     checks: [...new Set([...(main?.checks ?? []), ...(branch?.checks ?? [])])],
   }
   R.fastTrackMinAgeHours = ft ?? 6
@@ -2576,7 +2602,10 @@ async function main() {
     )
   }
   // H2: a failed build or signature check is never accepted.
-  const never = SKIP.filter((n) => n === 'build' || n === 'signatures')
+  const never = SKIP.filter(
+    (n) =>
+      n === 'build' || n === (CONFIG.build ?? 'build') || n === 'signatures'
+  )
   if (never.length) {
     finish(
       EXIT.cannotRun,

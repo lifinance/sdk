@@ -88,6 +88,77 @@ describe(
       )
     })
 
+    test('build: the key on the default branch names the build check; a branch cannot change it', async () => {
+      const fx = fixture()
+      const pj = readJson(join(fx.main, 'package.json'))
+      pj.scripts.build = 'node -e "process.exit(1)"'
+      pj.scripts['build:compile'] = 'node -e 0'
+      pushToMain(
+        fx,
+        {
+          'package.json': `${JSON.stringify(pj, null, 2)}\n`,
+          '.claude/bump-packages.json': `${JSON.stringify({ build: 'build:compile' }, null, 2)}\n`,
+        },
+        'chore: a compile-only build check'
+      )
+      const r = await runBump(fx, '--no-push')
+      assert.equal(r.code, 0, why(r))
+      const names = r.json.checks.map((c) => c.name)
+      assert.ok(names.includes('build:compile'), names.join(', '))
+      assert.ok(
+        !names.includes('build'),
+        'the failing build script does not run'
+      )
+      assert.ok(r.json.checks.find((c) => c.name === 'build:compile').ok)
+      // --skip-check never accepts the build check, also under its configured name.
+      const skip = await runBump(
+        fx,
+        '--skip-check',
+        'build:compile',
+        '--dry-run'
+      )
+      assert.equal(skip.code, 2, why(skip))
+      assert.match(
+        skip.json.message,
+        /cannot accept a failure of build:compile/
+      )
+
+      // A branch that names another build script: the default branch's value counts.
+      const fy = fixture()
+      const wt = join(fy.main, '.claude', 'worktrees', 'bump-build-key')
+      fy.git(fy.main, 'fetch', '-q', 'origin')
+      fy.git(
+        fy.main,
+        'worktree',
+        'add',
+        '-q',
+        '-b',
+        'chore/bump-deps-20991229',
+        wt,
+        'origin/main'
+      )
+      fs.mkdirSync(join(wt, '.claude'), { recursive: true })
+      fs.writeFileSync(
+        join(wt, '.claude/bump-packages.json'),
+        `${JSON.stringify({ build: 'check' })}\n`
+      )
+      fy.git(wt, 'add', '.claude/bump-packages.json')
+      fy.git(
+        wt,
+        'commit',
+        '-q',
+        '--no-verify',
+        '-m',
+        'chore: swap the build check'
+      )
+      const branch = await runBump(fy, '--worktree', wt, '--dry-run')
+      assert.equal(branch.code, 0, why(branch))
+      assert.match(
+        branch.json.notes.join('\n'),
+        /the build check on the branch \(check\) is not used: the value comes from origin\/main \(build\)/
+      )
+    })
+
     test('checks: extra package.json scripts run; a bad value is exit 2', async () => {
       const fx = fixture()
       const pj = readJson(join(fx.main, 'package.json'))

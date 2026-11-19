@@ -17,7 +17,8 @@ The file is optional. It is not part of the skill folder, because each repo has 
     }
   ],
   "fastTrackMinAgeHours": 6,
-  "checks": ["test:integration", "test:snapshots"]
+  "checks": ["test:integration", "test:snapshots"],
+  "build": "build:compile"
 }
 ```
 
@@ -33,6 +34,10 @@ The file is optional. It is not part of the skill folder, because each repo has 
   `knip:check`, `test:unit` or `test`). The script runs the union of the list on `main` and
   the list on the branch, so a branch can add a check but cannot remove one. A name
   without a script is skipped.
+- `build`: the `package.json` script that the script runs as the build check (default
+  `build`). The other checks that need the build wait for it, and `--skip-check` never
+  accepts its failure. The script reads this value only from `main`, so that a branch cannot
+  weaken the check. Use it only when the repo's own build cannot pass on a developer machine.
 - The script reads `heldMajors` from the bump branch. Each entry needs `name` and `reason`.
   An unknown key stops the run (exit 2), so that a typing error does not pass without a
   message.
@@ -56,6 +61,10 @@ In jumper-widget, each `@lifi/sdk-provider-*` pins one exact `@lifi/sdk`. They m
 - `check` and `check:types` in `package.json` give the script the lint, format and type
   checks of CI. `check:types` runs `next typegen` first, as CI does. The other test suites
   of CI are in `checks` of `.claude/bump-packages.json`.
+- `next build` cannot pass locally: page-data collection needs the env values and calls
+  Strapi and the backends. The build check is `build:compile` (`next build
+  --experimental-build-mode=compile`): it compiles and type-checks, but it does not
+  prerender. CI and the Vercel preview run the full build.
 - The "collapse duplicate copies" overrides use caret ranges (for example `viem: ^2.58.1`),
   so that the script moves each one to the newest aged version of its major. An exact pin
   with a reason in its comment is a hold: `@coinbase/cdp-sdk`, `eslint`, `zod` and the
