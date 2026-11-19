@@ -50,11 +50,11 @@
     "@scure/base": "^2.4.0"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.1",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   },
   "publishConfig": {
     "access": "public"

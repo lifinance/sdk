@@ -9,10 +9,10 @@
   "license": "MIT",
   "dependencies": {
     "@lifi/data-types": "^8.0.0",
-    "@lifi/sdk": "^4.12.1",
-    "@lifi/sdk-provider-ethereum": "^4.2.12",
+    "@lifi/sdk": "^4.13.0",
+    "@lifi/sdk-provider-ethereum": "^4.3.0",
     "dotenv": "^18.0.10",
-    "viem": "^2.57.20"
+    "viem": "^2.58.0"
   },
   "scripts": {
     "example:swap": "tsx examples/swap.ts",
