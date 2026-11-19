@@ -837,7 +837,8 @@ export function satisfies(version, range) {
 
 // Split an override selector into the package it targets and its kind.
 //   `name`            -> whole package       (an exact value is a hold)
-//   `name@<range>`    -> old copies only     (lifts them; not a hold)
+//   `name@<range>`    -> old copies only     (lifts them; a hold only when it pins one
+//                                            exact version and has a comment)
 //   `parent>child`    -> one dependency path (reported, never a hold)
 export function parseSelector(sel) {
   // A range comparator `>` is followed by `=`, a space, a digit or `v<digit>`. Any other

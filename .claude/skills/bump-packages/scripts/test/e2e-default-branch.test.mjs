@@ -65,6 +65,29 @@ describe(
       assert.equal(originRef(fx, BRANCH), null)
     })
 
+    test('a range selector with one exact version and a reason holds a bump into its range', async () => {
+      const fx = fixture()
+      pushToMain(
+        fx,
+        {
+          'pnpm-workspace.yaml':
+            "packages:\n  - packages/*\nminimumReleaseAge: 1440\noverrides:\n  # 2.1.2+ changes the output for this test.\n  'ms@>=2.1.2': 2.1.1\n",
+        },
+        'chore: hold ms below 2.1.2'
+      )
+      const r = await runBump(fx, '--dry-run')
+      assert.equal(r.code, 0, why(r))
+      const w = r.json.waiting.find((i) => i.name === 'ms')
+      assert.match(
+        w?.text ?? '',
+        /held at 2\.1\.1 by override ms@(?:>|&gt;)=2\.1\.2: 2\.1\.1/
+      )
+      assert.ok(
+        !r.json.applied.bumps.some((b) => b.name === 'ms'),
+        'ms is not bumped'
+      )
+    })
+
     test('checks: extra package.json scripts run; a bad value is exit 2', async () => {
       const fx = fixture()
       const pj = readJson(join(fx.main, 'package.json'))

@@ -38,7 +38,8 @@ The file is optional. It is not part of the skill folder, because each repo has 
   message.
 
 To hold a package at one exact version, use an exact override with a comment in
-`pnpm-workspace.yaml`, not this file.
+`pnpm-workspace.yaml`, not this file. A selector that pins one exact version and has a comment
+(`'zod@>=4.6.6': 4.6.5`) also holds a direct bump into its range.
 
 ## Single-copy packages
 

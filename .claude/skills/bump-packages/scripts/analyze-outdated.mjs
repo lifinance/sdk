@@ -798,6 +798,31 @@ async function main() {
       })
       continue
     }
+    // A range selector that pins one exact version and gives a reason
+    // (`zod@>=4.6.6: 4.6.5`) is a hold too: a bump into that range resolves to the pin.
+    const rangeHold = overrides.find(
+      (o) =>
+        o.name === name &&
+        o.kind === 'range' &&
+        isVersionLike(o.value) &&
+        o.reason
+    )
+    const rangeTarget = rangeHold ? agedTarget(info.current) : null
+    if (
+      rangeTarget &&
+      satisfies(
+        rangeTarget,
+        rangeHold.key.slice(rangeHold.key.lastIndexOf('@') + 1)
+      ) === true
+    ) {
+      held.push({
+        ...base,
+        target: rangeTarget,
+        heldBy: `override ${rangeHold.key}: ${rangeHold.value}`,
+        reason: rangeHold.reason,
+      })
+      continue
+    }
     if (registryLatest && cmpRaw(info.current, registryLatest) > 0) {
       // Above the `latest` dist-tag (a prerelease, or `latest` moved back): no upgrade.
       held.push({
