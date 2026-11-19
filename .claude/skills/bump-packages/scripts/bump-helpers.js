@@ -586,10 +586,11 @@ export function newPrBody(block, template) {
 const BUMP_BRANCH_RE = /^chore\/bump-deps-\d{8}(-\d+)?$/
 
 // The open bump PR to reuse: same repository (never a fork), the exact title, and a
-// branch that bump.mjs made. `prs` comes from `gh pr list --json
-// number,headRefName,title,isCrossRepository,headRepositoryOwner`. Returns
+// branch that bump.mjs made, into `base` (the default branch) when it is given. `prs` comes
+// from `gh pr list --json number,headRefName,baseRefName,title,isCrossRepository,
+// headRepositoryOwner`. Returns
 // { pr, all, rejected }: `all` holds every qualifying PR (more than one is an error).
-export function pickBumpPr(prs, owner) {
+export function pickBumpPr(prs, owner, base) {
   const rejected = []
   const ok = []
   for (const p of prs ?? []) {
@@ -604,7 +605,9 @@ export function pickBumpPr(prs, owner) {
         ? `head owner ${p.headRepositoryOwner.login}`
         : !BUMP_BRANCH_RE.test(p.headRefName ?? '')
           ? `branch ${p.headRefName} is not chore/bump-deps-<yyyymmdd>`
-          : null
+          : base && p.baseRefName !== base
+            ? `base ${p.baseRefName ?? '(unknown)'} is not the default branch ${base}`
+            : null
     ;(why ? rejected : ok).push(why ? { number: p.number, why } : p)
   }
   return { pr: ok[0] ?? null, all: ok, rejected }

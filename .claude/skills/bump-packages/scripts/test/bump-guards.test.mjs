@@ -62,6 +62,20 @@ test('pickBumpPr: never a fork PR, only a chore/bump-deps-<yyyymmdd> branch', ()
   )
   assert.match(rejected[0].why, /fork/)
   assert.equal(pickBumpPr([pr(7, 'main')], 'lifinance').pr, null)
+  // A bump PR into another branch than the default branch is never reused.
+  const based = pickBumpPr(
+    [
+      pr(8, 'chore/bump-deps-20261112', { baseRefName: 'main' }),
+      pr(9, 'chore/bump-deps-20261113', { baseRefName: 'develop' }),
+    ],
+    'lifinance',
+    'develop'
+  )
+  assert.equal(based.pr.number, 9)
+  assert.match(
+    based.rejected[0].why,
+    /base main is not the default branch develop/
+  )
 })
 
 test('branchGuard: never main, the default branch, another branch, or the main checkout', () => {
