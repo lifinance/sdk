@@ -38,9 +38,12 @@ The file is optional. It is not part of the skill folder, because each repo has 
   accepts its failure. The script reads this value only from `main`, so that a branch cannot
   choose another script. A name without a script on `main` stops the run (exit 2). Use it
   only when the repo's own build cannot pass on a developer machine.
-- A check whose script is on `main` always runs. If the branch removes the script, the
-  check fails. If the branch changes the script, the summary has a note. Review that
-  change: the branch sets the command that the check runs.
+- A check whose script is in the root `package.json` on `main` always runs. If the branch
+  removes the script, the check fails. If the branch adds `test:unit`, the `test` check of
+  `main` still runs.
+- If the branch adds, changes or removes a script in any `package.json`, the summary has a
+  note. Review that change: the checks run these scripts, and `pnpm -r` runs the scripts of
+  each workspace package.
 - The script reads `heldMajors` from the bump branch. Each entry needs `name` and `reason`.
   An unknown key stops the run (exit 2), so that a typing error does not pass without a
   message.

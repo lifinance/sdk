@@ -1885,6 +1885,13 @@ function planChecks(wt, projects, out) {
     mainScripts = JSON.parse(showMain(wt, 'package.json') ?? '{}').scripts ?? {}
   } catch {}
   const want = (s) => has(s) || !!mainScripts[s]
+  // A branch can still change what a check runs: the body of a root script, or a script of
+  // a workspace package (`pnpm -r`). Each such change gets a note.
+  for (const note of scriptChanges(wt)) {
+    if (!R.notes.includes(note)) {
+      R.notes.push(note)
+    }
+  }
   const check = (name, args, extra, fn = null) => {
     if (!has(name)) {
       return add(
@@ -1897,12 +1904,6 @@ function planChecks(wt, projects, out) {
         },
         extra
       )
-    }
-    if (mainScripts[name] && pkg.scripts[name] !== mainScripts[name]) {
-      const note = `package.json on this branch changes the check script ${name} (on ${MAIN}: ${mainScripts[name]}). Review the change.`
-      if (!R.notes.includes(note)) {
-        R.notes.push(note)
-      }
     }
     return fn
       ? add(name, pnpmIn(wt, args), fn, extra)
@@ -1962,12 +1963,14 @@ function planChecks(wt, projects, out) {
   if (want('knip:check')) {
     check('knip:check', ['knip:check'], after)
   }
-  const testScript = want('test:unit')
-    ? 'test:unit'
-    : want('test')
-      ? 'test'
-      : null
-  if (testScript) {
+  // The test script of the default branch, and the one of the branch when it differs: a
+  // branch that adds `test:unit` does not replace `test`.
+  const testOf = (h) =>
+    h('test:unit') ? 'test:unit' : h('test') ? 'test' : null
+  const testScripts = new Set(
+    [testOf((x) => !!mainScripts[x]), testOf(has)].filter(Boolean)
+  )
+  for (const testScript of testScripts) {
     check(testScript, [testScript], after, async () => {
       const log = logOf(out, testScript)
       const r = await run('pnpm', [testScript], { cwd: wt, log })
@@ -2564,6 +2567,42 @@ function parseConfig(text, where) {
     bad('build must be the name of one package.json script')
   }
   return { heldMajors: held, fastTrackMinAgeHours: ft ?? null, checks, build }
+}
+
+// One note for each package.json whose scripts differ from the default branch (the root, a
+// workspace package or an example). The checks run these scripts.
+function scriptChanges(wt) {
+  let files = []
+  try {
+    files = execFileSync('git', ['diff', '--name-only', MAIN, '--'], {
+      cwd: wt,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .split('\n')
+      .filter((f) => basename(f) === 'package.json')
+  } catch {}
+  const scriptsOf = (text) => {
+    try {
+      return JSON.parse(text ?? '{}').scripts ?? {}
+    } catch {
+      return {}
+    }
+  }
+  const notes = []
+  for (const f of files) {
+    const before = scriptsOf(showMain(wt, f))
+    const now = scriptsOf(read(join(wt, f)))
+    const names = [...new Set([...Object.keys(before), ...Object.keys(now)])]
+      .filter((n) => before[n] !== now[n])
+      .sort()
+    if (names.length) {
+      notes.push(
+        `${f} on this branch changes the scripts ${names.join(', ')} (compared with ${MAIN}). The checks run these scripts: review the change.`
+      )
+    }
+  }
+  return notes
 }
 
 // The text of a file on the default branch, or null.

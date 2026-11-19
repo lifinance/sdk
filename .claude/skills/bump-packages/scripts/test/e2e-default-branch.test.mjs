@@ -419,9 +419,56 @@ describe(
       const r = await runBump(fx, '--worktree', wt, '--no-push')
       assert.match(
         r.json.notes.join('\n'),
-        /package\.json on this branch changes the check script check:types/,
+        /^package\.json on this branch changes the scripts check:types /m,
         why(r)
       )
+    })
+
+    test('a branch that changes a workspace package script gets a note', async () => {
+      const fx = fixture()
+      const wt = join(fx.main, '.claude', 'worktrees', 'lib-types')
+      fx.git(fx.main, 'fetch', '-q', 'origin')
+      fx.git(
+        fx.main,
+        'worktree',
+        'add',
+        '-q',
+        '-b',
+        'chore/bump-deps-20991227',
+        wt,
+        'origin/main'
+      )
+      const file = join(wt, 'packages', 'lib', 'package.json')
+      const pk = readJson(file)
+      pk.scripts['check:types'] = 'true'
+      fs.writeFileSync(file, `${JSON.stringify(pk, null, 2)}\n`)
+      fx.git(
+        wt,
+        'commit',
+        '-q',
+        '--no-verify',
+        '-am',
+        'chore: edit a package script'
+      )
+      const r = await runBump(fx, '--worktree', wt, '--no-push')
+      const notes = r.json.notes.join('\n')
+      assert.match(
+        notes,
+        /packages\/lib\/package\.json on this branch changes the scripts check:types /,
+        why(r)
+      )
+      assert.doesNotMatch(notes, /^package\.json on this branch/m)
+    })
+
+    test('test: a branch that adds test:unit still runs the test of the default branch', async () => {
+      const fx = fixture()
+      const wt = editedBranch(fx, 'unit-added', (s) => {
+        s['test:unit'] = 'node -e 0'
+      })
+      const r = await runBump(fx, '--worktree', wt, '--no-push')
+      const names = r.json.checks.map((c) => c.name)
+      assert.ok(names.includes('test'), `${names}\n${why(r)}`)
+      assert.ok(names.includes('test:unit'), `${names}`)
     })
 
     test('--worktree on a branch with an open PR of another title: exit 2', async () => {
