@@ -22,7 +22,7 @@ const D = new Date()
 // The local date, as bump.mjs makes it.
 export const DATE = `${D.getFullYear()}-${pad(D.getMonth() + 1)}-${pad(D.getDate())}`
 export const BRANCH = `chore/bump-deps-${DATE.replaceAll('-', '')}`
-export const LIST = `list --repo acme/fixture --state open --search "chore: bump packages" in:title --json number,headRefName,title,isCrossRepository,headRepositoryOwner`
+export const LIST = `list --repo acme/fixture --state open --search "chore: bump packages" in:title --json number,headRefName,baseRefName,title,isCrossRepository,headRepositoryOwner`
 
 // The stub gh (CommonJS). It logs every call to GH_STUB_CALLS, answers `pr` and
 // `repo` from GH_STUB_STATE, and passes anything else to the real gh.
@@ -42,7 +42,7 @@ const pick = (p) => Object.fromEntries(opt('--json').split(',').map((k) => [k, p
 const body = () => fs.readFileSync(opt('--body-file'), 'utf8')
 let out = ''
 if (a[0] === 'repo') {
-  out = JSON.stringify({ nameWithOwner: repo, defaultBranchRef: { name: 'main' } })
+  out = JSON.stringify({ nameWithOwner: repo, defaultBranchRef: { name: st.defaultBranch || 'main' } })
 } else if (a[1] === 'list') {
   out = JSON.stringify(st.prs.filter((p) => p.state === 'OPEN').map(pick))
 } else if (a[1] === 'create' && st.failCreate) {
@@ -50,7 +50,7 @@ if (a[0] === 'repo') {
   process.exit(1)
 } else if (a[1] === 'create') {
   const number = st.next++
-  st.prs.push({ number, state: 'OPEN', title: opt('--title'), headRefName: opt('--head'),
+  st.prs.push({ number, state: 'OPEN', title: opt('--title'), headRefName: opt('--head'), baseRefName: opt('--base'),
     isCrossRepository: false, headRepositoryOwner: { login: repo.split('/')[0] }, body: body() })
   out = 'https://github.com/' + repo + '/pull/' + number
 } else if (a[1] === 'edit') {

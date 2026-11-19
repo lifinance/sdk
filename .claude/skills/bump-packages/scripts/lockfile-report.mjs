@@ -4,7 +4,8 @@
 // `pnpm outdated` sees direct dependencies only. A regeneration can also move transitive
 // packages, e.g. an open override (`preact: ">=10.29.1"`) that jumps a major. This script
 // uses two refs:
-//   - the trust anchor: always the merge-base of HEAD and origin/main. Only its
+//   - the trust anchor: always the merge-base of HEAD and the default branch (BUMP_BASE_REF
+//     from bump.mjs, or origin/HEAD). Only its
 //     minimumReleaseAgeExclude list (reviewed and merged) plus --approved is trusted, and the
 //     age check covers every version that the anchor lockfile does not have, so --base can
 //     neither widen the trusted list nor hide a fresh version.
@@ -21,7 +22,7 @@
 //     not strict: when no mature version fits, pnpm installs a fresh one and adds it to the
 //     list by itself. So the gate check trusts only the ANCHOR list plus --approved entries.
 // Output: JSON on stdout; errors on stderr. Read-only. Exits 2 (fail closed) when a base is
-// not usable (no merge-base with origin/main, a --base that is not an ancestor of HEAD, or
+// not usable (no merge-base with the default branch, a --base that is not an ancestor of HEAD, or
 // no lockfile on the compare base) or an --approved entry is not an exact name@x.y.z.
 //
 // Usage: node lockfile-report.mjs [--root <repo>] [--base <ancestor of HEAD>]
@@ -79,7 +80,7 @@ const list = (s) =>
     .map((x) => x.trim())
     .filter(Boolean)
 
-// The merge-base, not origin/main itself: origin/main can move while the branch is open
+// The merge-base, not the default branch itself: it can move while the branch is open
 // (another session fetches); its new commits are not changes of this branch.
 let baseRef
 let trustAnchor

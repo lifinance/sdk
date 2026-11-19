@@ -800,21 +800,25 @@ async function main() {
     }
     // A range selector that pins one exact version and gives a reason
     // (`zod@>=4.6.6: 4.6.5`) is a hold too: a bump into that range resolves to the pin.
-    const rangeHold = overrides.find(
+    const rangePins = overrides.filter(
       (o) =>
         o.name === name &&
         o.kind === 'range' &&
         isVersionLike(o.value) &&
         o.reason
     )
-    const rangeTarget = rangeHold ? agedTarget(info.current) : null
-    if (
-      rangeTarget &&
-      satisfies(
-        rangeTarget,
-        rangeHold.key.slice(rangeHold.key.lastIndexOf('@') + 1)
-      ) === true
-    ) {
+    const rangeTarget = rangePins.length ? agedTarget(info.current) : null
+    // The override turns a bump into its range back into the pin, unless the pin is
+    // the target itself. More than one selector can name the package.
+    const rangeHold = rangeTarget
+      ? rangePins.find(
+          (o) =>
+            o.value !== rangeTarget &&
+            satisfies(rangeTarget, o.key.slice(o.key.lastIndexOf('@') + 1)) ===
+              true
+        )
+      : null
+    if (rangeHold) {
       held.push({
         ...base,
         target: rangeTarget,

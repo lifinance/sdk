@@ -18,6 +18,7 @@ import {
   runBump,
   skip,
   why,
+  writeJson,
 } from './e2e-fixture.js'
 
 describe(
@@ -34,6 +35,7 @@ describe(
       fx.git(fx.main, 'push', '-q', '-u', 'origin', 'develop')
       fx.og('symbolic-ref', 'HEAD', 'refs/heads/develop')
       fx.git(fx.main, 'remote', 'set-head', 'origin', 'develop')
+      writeJson(fx.state, { ...readJson(fx.state), defaultBranch: 'develop' })
 
       const r = await runBump(fx)
       assert.equal(r.code, 0, why(r))
@@ -54,6 +56,21 @@ describe(
       assert.doesNotMatch(r.err, /origin\/main/)
     })
 
+    test('origin/HEAD that differs from the default branch on GitHub: exit 2', async () => {
+      const fx = fixture()
+      fx.git(fx.main, 'checkout', '-q', '-b', 'develop')
+      fx.git(fx.main, 'push', '-q', '-u', 'origin', 'develop')
+      fx.git(fx.main, 'config', 'remote.origin.followRemoteHEAD', 'never')
+      fx.git(fx.main, 'remote', 'set-head', 'origin', 'develop')
+      // GitHub (the stub) still says main.
+      const r = await runBump(fx, '--dry-run')
+      assert.equal(r.code, 2, why(r))
+      assert.match(
+        r.json.message,
+        /origin\/HEAD is origin\/develop, but the default branch on GitHub is main/
+      )
+    })
+
     test('no origin/HEAD: exit 2 before any change', async () => {
       const fx = fixture()
       // git 2.48+ recreates origin/HEAD on fetch unless followRemoteHEAD is "never".
@@ -71,7 +88,7 @@ describe(
         fx,
         {
           'pnpm-workspace.yaml':
-            "packages:\n  - packages/*\nminimumReleaseAge: 1440\noverrides:\n  # 2.1.2+ changes the output for this test.\n  'ms@>=2.1.2': 2.1.1\n",
+            "packages:\n  - packages/*\nminimumReleaseAge: 1440\noverrides:\n  # Old copies only.\n  'ms@<2': 1.0.0\n  # 2.1.2+ changes the output for this test.\n  'ms@>=2.1.2': 2.1.1\n",
         },
         'chore: hold ms below 2.1.2'
       )
@@ -110,6 +127,10 @@ describe(
         'the failing build script does not run'
       )
       assert.ok(r.json.checks.find((c) => c.name === 'build:compile').ok)
+      assert.match(
+        r.json.checks.find((c) => c.name === 'build:compile').cmd,
+        / run build:compile$/
+      )
       // --skip-check never accepts the build check, also under its configured name.
       const skip = await runBump(
         fx,
@@ -178,6 +199,64 @@ describe(
       assert.equal(r.code, 4, why(r))
     })
 
+    test('a flow-style packages list with more than the root keeps pnpm -r', async () => {
+      const fx = fixture()
+      const pj = readJson(join(fx.main, 'package.json'))
+      pj.scripts['check:types'] = 'node -e "process.exit(1)"'
+      pushToMain(
+        fx,
+        {
+          'package.json': `${JSON.stringify(pj, null, 2)}\n`,
+          'pnpm-workspace.yaml':
+            "packages: ['packages/*']\nminimumReleaseAge: 1440\n",
+        },
+        'chore: a flow-style packages list'
+      )
+      const r = await runBump(fx, '--no-push')
+      const types = r.json.checks.find((c) => c.name === 'check:types')
+      assert.match(
+        types?.cmd ?? '',
+        / -r --parallel --no-bail check:types$/,
+        why(r)
+      )
+    })
+
+    test('build: a key that names no package.json script is exit 2', async () => {
+      const fx = fixture()
+      pushToMain(
+        fx,
+        {
+          '.claude/bump-packages.json': `${JSON.stringify({ build: 'build:missing' })}\n`,
+        },
+        'chore: a build key without a script'
+      )
+      const r = await runBump(fx, '--dry-run')
+      assert.equal(r.code, 2, why(r))
+      assert.match(
+        r.json.message,
+        /build names build:missing, but package\.json has no such script/
+      )
+    })
+
+    test('a workspace that lists the root and packages type-checks the root too', async () => {
+      const fx = fixture()
+      const pj = readJson(join(fx.main, 'package.json'))
+      pj.scripts['check:types'] = 'node -e "process.exit(1)"'
+      pushToMain(
+        fx,
+        {
+          'package.json': `${JSON.stringify(pj, null, 2)}\n`,
+          'pnpm-workspace.yaml':
+            "packages:\n  - '.'\n  - packages/*\nminimumReleaseAge: 1440\n",
+        },
+        'chore: the root is a workspace project'
+      )
+      const r = await runBump(fx, '--no-push')
+      const types = r.json.checks.find((c) => c.name === 'check:types')
+      assert.match(types?.cmd ?? '', / -r --include-workspace-root /, why(r))
+      assert.equal(types.ok, false)
+    })
+
     test('checks: extra package.json scripts run; a bad value is exit 2', async () => {
       const fx = fixture()
       const pj = readJson(join(fx.main, 'package.json'))
@@ -195,6 +274,10 @@ describe(
       const names = r.json.checks.map((c) => c.name)
       assert.ok(names.includes('test:extra'), names.join(', '))
       assert.ok(r.json.checks.find((c) => c.name === 'test:extra').ok)
+      assert.match(
+        r.json.checks.find((c) => c.name === 'test:extra').cmd,
+        / run test:extra$/
+      )
       assert.ok(
         !names.includes('not-a-script'),
         'a name without a script is skipped'

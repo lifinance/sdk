@@ -453,6 +453,36 @@ async function setupGit() {
   }
   // The user's git config has fetch.pruneTags=true: never prune tags here.
   await must('git', ['fetch', '--no-prune-tags', 'origin'], { cwd: repo })
+  const head = await git(repo, [
+    'symbolic-ref',
+    '--short',
+    'refs/remotes/origin/HEAD',
+  ])
+  if (head.code !== 0 || !head.out.trim()) {
+    finish(
+      EXIT.cannotRun,
+      'origin/HEAD is not set, so the default branch is unknown. Run: git -C <repo> remote set-head origin --auto'
+    )
+  }
+  R.defaultBranch = head.out.trim().replace(/^origin\//, '')
+  // `git fetch` does not refresh an existing origin/HEAD, so an old clone can keep a
+  // default branch that GitHub no longer has. Stop instead of using it.
+  const repoView = JSON.parse(
+    await must('gh', ['repo', 'view', ghRepo, '--json', 'defaultBranchRef'], {
+      cwd: repo,
+    })
+  )
+  const ghDefault = repoView?.defaultBranchRef?.name
+  if (ghDefault && ghDefault !== R.defaultBranch) {
+    finish(
+      EXIT.cannotRun,
+      `origin/HEAD is origin/${R.defaultBranch}, but the default branch on GitHub is ${ghDefault}. Run: git -C <repo> remote set-head origin --auto`
+    )
+  }
+  MAIN = `origin/${R.defaultBranch}`
+  // ENV (the environment of every child) is a copy, so set the value there too.
+  process.env.BUMP_BASE_REF = MAIN
+  ENV.BUMP_BASE_REF = MAIN
   const prs = JSON.parse(
     await must(
       'gh',
@@ -466,13 +496,18 @@ async function setupGit() {
         '--search',
         '"chore: bump packages" in:title',
         '--json',
-        'number,headRefName,title,isCrossRepository,headRepositoryOwner',
+        'number,headRefName,baseRefName,title,isCrossRepository,headRepositoryOwner',
       ],
       { cwd: repo }
     )
   )
-  // Never a fork PR, never a branch that bump.mjs did not make (see pickBumpPr).
-  const { pr: openPr, all, rejected } = pickBumpPr(prs, ghRepo.split('/')[0])
+  // Never a fork PR, never a branch that bump.mjs did not make, never a PR into another
+  // branch than the default branch (see pickBumpPr).
+  const {
+    pr: openPr,
+    all,
+    rejected,
+  } = pickBumpPr(prs, ghRepo.split('/')[0], R.defaultBranch)
   for (const r of rejected) {
     R.notes.push(`Open PR #${r.number} is not reused: ${r.why}.`)
   }
@@ -482,22 +517,6 @@ async function setupGit() {
       `more than one open bump PR: ${all.map((p) => `#${p.number} (${p.headRefName})`).join(', ')}. Close all but one, then run again.`
     )
   }
-  const head = await git(repo, [
-    'symbolic-ref',
-    '--short',
-    'refs/remotes/origin/HEAD',
-  ])
-  if (head.code !== 0 || !head.out.trim()) {
-    finish(
-      EXIT.cannotRun,
-      'origin/HEAD is not set, so the default branch is unknown. Run: git -C <repo> remote set-head origin --auto'
-    )
-  }
-  R.defaultBranch = head.out.trim().replace(/^origin\//, '')
-  MAIN = `origin/${R.defaultBranch}`
-  // ENV (the environment of every child) is a copy, so set the value there too.
-  process.env.BUMP_BASE_REF = MAIN
-  ENV.BUMP_BASE_REF = MAIN
   const worktrees = (
     await must('git', ['worktree', 'list', '--porcelain'], { cwd: repo })
   )
@@ -1830,8 +1849,19 @@ function planChecks(wt, projects, out) {
   const after = { afterBuild: true }
   // The build check: `build`, or the script that `build` names in the config.
   const buildScript = CONFIG.build ?? 'build'
+  if (buildScript !== 'build' && !has(buildScript)) {
+    finish(
+      EXIT.cannotRun,
+      `.claude/bump-packages.json: build names ${buildScript}, but package.json has no such script. Fix the key on ${MAIN}.`
+    )
+  }
   if (has(buildScript)) {
-    pnpmTask(buildScript, [buildScript], { build: true })
+    // `pnpm run`: a script name such as `publish` must not start a pnpm command.
+    pnpmTask(
+      buildScript,
+      buildScript === 'build' ? ['build'] : ['run', buildScript],
+      { build: true }
+    )
   }
   if (has('check')) {
     pnpmTask('check', ['check'])
@@ -1839,16 +1869,28 @@ function planChecks(wt, projects, out) {
   if (has('check:types')) {
     // `pnpm -r` leaves out the root project. In a workspace with only the root
     // (`packages: ['.']`), it matches no project and passes without a check.
-    const pkgs = yamlList(
-      read(join(wt, 'pnpm-workspace.yaml')) ?? '',
-      'packages'
-    )
-    const rootOnly = pkgs.every((x) => x === '.' || x === './')
+    const wsText = read(join(wt, 'pnpm-workspace.yaml')) ?? ''
+    const flow = /^packages:\s*\[(.*)\]\s*$/m.exec(wsText)
+    const pkgs = flow
+      ? flow[1]
+          .split(',')
+          .map((x) => x.trim().replace(/^['"]|['"]$/g, ''))
+          .filter(Boolean)
+      : yamlList(wsText, 'packages')
+    const isRoot = (x) => x === '.' || x === './'
+    const rootOnly = pkgs.every(isRoot)
     pnpmTask(
       'check:types',
       rootOnly
         ? ['check:types']
-        : ['-r', '--parallel', '--no-bail', 'check:types'],
+        : [
+            '-r',
+            // `-r` leaves out the root unless the workspace lists it.
+            ...(pkgs.some(isRoot) ? ['--include-workspace-root'] : []),
+            '--parallel',
+            '--no-bail',
+            'check:types',
+          ],
       after
     )
   }
@@ -1880,7 +1922,7 @@ function planChecks(wt, projects, out) {
   // Extra scripts from `checks` in .claude/bump-packages.json.
   for (const name of CONFIG.checks ?? []) {
     if (has(name) && !tasks.some((t) => t.name === name)) {
-      pnpmTask(name, [name], after)
+      pnpmTask(name, ['run', name], after)
     }
   }
   // A13: registry signatures of every package in the lockfile.

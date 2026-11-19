@@ -37,7 +37,8 @@ The file is optional. It is not part of the skill folder, because each repo has 
 - `build`: the `package.json` script that the script runs as the build check (default
   `build`). The other checks that need the build wait for it, and `--skip-check` never
   accepts its failure. The script reads this value only from `main`, so that a branch cannot
-  weaken the check. Use it only when the repo's own build cannot pass on a developer machine.
+  weaken the check. A name without a script stops the run (exit 2). Use it only when the
+  repo's own build cannot pass on a developer machine.
 - The script reads `heldMajors` from the bump branch. Each entry needs `name` and `reason`.
   An unknown key stops the run (exit 2), so that a typing error does not pass without a
   message.

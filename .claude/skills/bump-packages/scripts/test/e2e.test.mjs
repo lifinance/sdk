@@ -281,6 +281,7 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
     const pr = (number, headRefName, extra = {}) => ({
       ...{ number, state: 'OPEN', title: 'chore: bump packages', body: '' },
       headRefName,
+      baseRefName: 'main',
       isCrossRepository: false,
       headRepositoryOwner: { login: 'acme' },
       ...extra,
