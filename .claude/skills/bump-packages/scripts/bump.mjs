@@ -558,14 +558,6 @@ async function setupGit() {
       )
     }
     const branch = w.branch?.replace(/^refs\/heads\//, '') ?? null
-    // The branch of a PR that pickBumpPr rejected (a fork, another base): never push to it.
-    const other = branch && rejected.find((r) => r.headRefName === branch)
-    if (other) {
-      finish(
-        EXIT.cannotRun,
-        `--worktree is on ${branch}, the branch of open PR #${other.number}, which the script does not continue: ${other.why}. Close that PR, or use a worktree on another branch.`
-      )
-    }
     if (openPr && openPr.headRefName !== branch) {
       finish(
         EXIT.cannotRun,
@@ -598,6 +590,37 @@ async function setupGit() {
     R.worktree = wt
     R.worktreeKept = true
     guard()
+    // A push also changes every other open PR of this repo on the branch: one with another
+    // title, or into another base. Continue only when the branch has no such PR.
+    const others = JSON.parse(
+      await must(
+        'gh',
+        [
+          'pr',
+          'list',
+          '--repo',
+          ghRepo,
+          '--state',
+          'open',
+          '--head',
+          cont.branch,
+          '--json',
+          'number,headRefName,baseRefName,isCrossRepository',
+        ],
+        { cwd: repo }
+      )
+    ).filter(
+      (p) =>
+        p.headRefName === cont.branch &&
+        !p.isCrossRepository &&
+        p.number !== cont.pr?.number
+    )
+    if (others.length) {
+      finish(
+        EXIT.cannotRun,
+        `${cont.branch} is also the branch of open PR ${others.map((p) => `#${p.number} (base ${p.baseRefName})`).join(', ')}, which this run does not continue. A push changes that PR too. Close it, or use a worktree on another branch.`
+      )
+    }
     const st = await must('git', ['status', '--porcelain'], { cwd: wt })
     if (st.trim()) {
       finish(EXIT.cannotRun, `the worktree is not clean: ${wt}`)
@@ -1855,33 +1878,51 @@ function planChecks(wt, projects, out) {
       extra
     )
   const after = { afterBuild: true }
-  // The build check: `build`, or the script that `build` names in the config.
-  // loadConfig checked that the script is on the default branch. A branch that removes it
-  // fails the build check: the check is never skipped.
+  // A check runs when its script is on the branch or on the default branch. A branch that
+  // removes the script of a check fails that check: only a merged change removes a check.
+  let mainScripts = {}
+  try {
+    mainScripts = JSON.parse(showMain(wt, 'package.json') ?? '{}').scripts ?? {}
+  } catch {}
+  const want = (s) => has(s) || !!mainScripts[s]
+  const check = (name, args, extra, fn = null) => {
+    if (!has(name)) {
+      return add(
+        name,
+        pnpmIn(wt, ['run', name]),
+        async () => {
+          const err = `package.json on this branch has no script ${name}, which ${MAIN} has. Only a merged change removes a check.`
+          writeFileSync(logOf(out, name), `${err}\n`)
+          return { code: 1, out: '', err, seconds: 0 }
+        },
+        extra
+      )
+    }
+    if (mainScripts[name] && pkg.scripts[name] !== mainScripts[name]) {
+      const note = `package.json on this branch changes the check script ${name} (on ${MAIN}: ${mainScripts[name]}). Review the change.`
+      if (!R.notes.includes(note)) {
+        R.notes.push(note)
+      }
+    }
+    return fn
+      ? add(name, pnpmIn(wt, args), fn, extra)
+      : pnpmTask(name, args, extra)
+  }
+  // The build check: `build`, or the script that `build` names in the config. loadConfig
+  // checked that the configured script is on the default branch.
   const buildScript = CONFIG.build ?? 'build'
-  if (buildScript !== 'build' && !has(buildScript)) {
-    add(
-      buildScript,
-      pnpmIn(wt, ['run', buildScript]),
-      async () => {
-        const err = `package.json on this branch has no script ${buildScript}, which .claude/bump-packages.json on ${MAIN} names as the build check.`
-        writeFileSync(logOf(out, buildScript), `${err}\n`)
-        return { code: 1, out: '', err, seconds: 0 }
-      },
-      { build: true }
-    )
-  } else if (has(buildScript)) {
+  if (want(buildScript)) {
     // `pnpm run`: a script name such as `publish` must not start a pnpm command.
-    pnpmTask(
+    check(
       buildScript,
       buildScript === 'build' ? ['build'] : ['run', buildScript],
       { build: true }
     )
   }
-  if (has('check')) {
-    pnpmTask('check', ['check'])
+  if (want('check')) {
+    check('check', ['check'])
   }
-  if (has('check:types')) {
+  if (want('check:types')) {
     // `pnpm -r` leaves out the root project. In a workspace with only the root
     // (`packages: ['.']`), it matches no project and passes without a check.
     const wsText = read(join(wt, 'pnpm-workspace.yaml')) ?? ''
@@ -1898,7 +1939,7 @@ function planChecks(wt, projects, out) {
     const listed = /^packages:/m.test(wsText)
     const unread = listed && !pkgs.length
     const rootOnly = !unread && pkgs.every(isRoot)
-    pnpmTask(
+    check(
       'check:types',
       rootOnly
         ? ['check:types']
@@ -1915,35 +1956,30 @@ function planChecks(wt, projects, out) {
       after
     )
   }
-  if (has('check:circular-deps')) {
-    pnpmTask('check:circular-deps', ['check:circular-deps'], after)
+  if (want('check:circular-deps')) {
+    check('check:circular-deps', ['check:circular-deps'], after)
   }
-  if (has('knip:check')) {
-    pnpmTask('knip:check', ['knip:check'], after)
+  if (want('knip:check')) {
+    check('knip:check', ['knip:check'], after)
   }
-  const testScript = has('test:unit')
+  const testScript = want('test:unit')
     ? 'test:unit'
-    : has('test')
+    : want('test')
       ? 'test'
       : null
   if (testScript) {
-    add(
-      testScript,
-      pnpmIn(wt, [testScript]),
-      async () => {
-        const log = logOf(out, testScript)
-        const r = await run('pnpm', [testScript], { cwd: wt, log })
-        // One retry: a parallel vitest run can fail once with ENOTEMPTY on its cache.
-        return r.code === 0 ? r : run('pnpm', [testScript], { cwd: wt, log })
-      },
-      after
-    )
+    check(testScript, [testScript], after, async () => {
+      const log = logOf(out, testScript)
+      const r = await run('pnpm', [testScript], { cwd: wt, log })
+      // One retry: a parallel vitest run can fail once with ENOTEMPTY on its cache.
+      return r.code === 0 ? r : run('pnpm', [testScript], { cwd: wt, log })
+    })
   }
   pnpmTask('dedupe --check', ['dedupe', '--check'])
   // Extra scripts from `checks` in .claude/bump-packages.json.
   for (const name of CONFIG.checks ?? []) {
-    if (has(name) && !tasks.some((t) => t.name === name)) {
-      pnpmTask(name, ['run', name], after)
+    if (want(name) && !tasks.some((t) => t.name === name)) {
+      check(name, ['run', name], after)
     }
   }
   // A13: registry signatures of every package in the lockfile.
@@ -2530,6 +2566,19 @@ function parseConfig(text, where) {
   return { heldMajors: held, fastTrackMinAgeHours: ft ?? null, checks, build }
 }
 
+// The text of a file on the default branch, or null.
+function showMain(wt, file) {
+  try {
+    return execFileSync('git', ['show', `${MAIN}:${file}`], {
+      cwd: wt,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+  } catch {
+    return null
+  }
+}
+
 // A10: `heldMajors` from the worktree's copy. L4: `fastTrackMinAgeHours` and `build` only
 // from the default branch's copy (default 6 and `build`): a control is lowered only by a
 // merged change. `checks`: the union of both copies.
@@ -2537,14 +2586,7 @@ function loadConfig(wt) {
   const file = join(wt, '.claude', 'bump-packages.json')
   const text = read(file)
   const branch = text == null ? null : parseConfig(text, file)
-  let mainText = null
-  try {
-    mainText = execFileSync(
-      'git',
-      ['show', `${MAIN}:.claude/bump-packages.json`],
-      { cwd: wt, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
-    )
-  } catch {}
+  const mainText = showMain(wt, '.claude/bump-packages.json')
   const main =
     mainText == null
       ? null
@@ -2562,13 +2604,7 @@ function loadConfig(wt) {
   if (build !== 'build') {
     let scripts = null
     try {
-      scripts = JSON.parse(
-        execFileSync('git', ['show', `${MAIN}:package.json`], {
-          cwd: wt,
-          encoding: 'utf8',
-          stdio: ['ignore', 'pipe', 'ignore'],
-        })
-      ).scripts
+      scripts = JSON.parse(showMain(wt, 'package.json')).scripts
     } catch {}
     if (!scripts?.[build]) {
       finish(

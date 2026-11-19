@@ -23,6 +23,9 @@ const D = new Date()
 export const DATE = `${D.getFullYear()}-${pad(D.getMonth() + 1)}-${pad(D.getDate())}`
 export const BRANCH = `chore/bump-deps-${DATE.replaceAll('-', '')}`
 export const LIST = `list --repo acme/fixture --state open --search "chore: bump packages" in:title --json number,headRefName,baseRefName,title,isCrossRepository,headRepositoryOwner`
+// The check for other open PRs on the branch that a run continues.
+export const HEADS = (branch) =>
+  `list --repo acme/fixture --state open --head ${branch} --json number,headRefName,baseRefName,isCrossRepository`
 
 // The stub gh (CommonJS). It logs every call to GH_STUB_CALLS, answers `pr` and
 // `repo` from GH_STUB_STATE, and passes anything else to the real gh.

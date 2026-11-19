@@ -32,13 +32,15 @@ The file is optional. It is not part of the skill folder, because each repo has 
 - `checks`: more `package.json` scripts to run after the build, besides the ones that the
   script finds by name (`build`, `check`, `check:types`, `check:circular-deps`,
   `knip:check`, `test:unit` or `test`). The script runs the union of the list on `main` and
-  the list on the branch, so a branch can add a check but cannot remove one. A name
-  without a script is skipped.
+  the list on the branch. A name without a script on `main` and on the branch is skipped.
 - `build`: the `package.json` script that the script runs as the build check (default
   `build`). The other checks that need the build wait for it, and `--skip-check` never
   accepts its failure. The script reads this value only from `main`, so that a branch cannot
-  weaken the check. A name without a script stops the run (exit 2). Use it only when the
-  repo's own build cannot pass on a developer machine.
+  choose another script. A name without a script on `main` stops the run (exit 2). Use it
+  only when the repo's own build cannot pass on a developer machine.
+- A check whose script is on `main` always runs. If the branch removes the script, the
+  check fails. If the branch changes the script, the summary has a note. Review that
+  change: the branch sets the command that the check runs.
 - The script reads `heldMajors` from the bump branch. Each entry needs `name` and `reason`.
   An unknown key stops the run (exit 2), so that a typing error does not pass without a
   message.

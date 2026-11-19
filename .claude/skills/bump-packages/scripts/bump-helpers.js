@@ -608,9 +608,7 @@ export function pickBumpPr(prs, owner, base) {
           : base && p.baseRefName !== base
             ? `base ${p.baseRefName ?? '(unknown)'} is not the default branch ${base}`
             : null
-    ;(why ? rejected : ok).push(
-      why ? { number: p.number, headRefName: p.headRefName, why } : p
-    )
+    ;(why ? rejected : ok).push(why ? { number: p.number, why } : p)
   }
   return { pr: ok[0] ?? null, all: ok, rejected }
 }

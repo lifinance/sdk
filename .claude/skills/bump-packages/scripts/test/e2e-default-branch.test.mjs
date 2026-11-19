@@ -338,7 +338,115 @@ describe(
       assert.equal(r.code, 2, why(r))
       assert.match(
         r.json.message,
-        /the branch of open PR #5, which the script does not continue: base production is not the default branch main/
+        /is also the branch of open PR #5 \(base production\), which this run does not continue/
+      )
+    })
+
+    // A worktree on a bump branch whose package.json the test edits. Returns its path.
+    const editedBranch = (fx, name, edit) => {
+      const wt = join(fx.main, '.claude', 'worktrees', name)
+      fx.git(fx.main, 'fetch', '-q', 'origin')
+      fx.git(
+        fx.main,
+        'worktree',
+        'add',
+        '-q',
+        '-b',
+        `chore/bump-deps-2099122${name.length % 10}`,
+        wt,
+        'origin/main'
+      )
+      const pk = readJson(join(wt, 'package.json'))
+      edit(pk.scripts)
+      fs.writeFileSync(
+        join(wt, 'package.json'),
+        `${JSON.stringify(pk, null, 2)}\n`
+      )
+      fx.git(
+        wt,
+        'commit',
+        '-q',
+        '--no-verify',
+        '-am',
+        'chore: edit the scripts'
+      )
+      return wt
+    }
+
+    test('build: a branch without the default build script fails the build check', async () => {
+      const fx = fixture()
+      const wt = editedBranch(fx, 'no-build', (s) => {
+        delete s.build
+      })
+      const r = await runBump(fx, '--worktree', wt, '--no-push')
+      assert.equal(r.code, 4, why(r))
+      assert.equal(
+        r.json.checks.find((c) => c.name === 'build')?.ok,
+        false,
+        why(r)
+      )
+    })
+
+    test('checks: a branch that removes a configured check fails that check', async () => {
+      const fx = fixture()
+      const pj = readJson(join(fx.main, 'package.json'))
+      pj.scripts['test:extra'] = 'node -e 0'
+      pushToMain(
+        fx,
+        {
+          'package.json': `${JSON.stringify(pj, null, 2)}\n`,
+          '.claude/bump-packages.json': `${JSON.stringify({ checks: ['test:extra'] })}\n`,
+        },
+        'chore: an extra check'
+      )
+      const wt = editedBranch(fx, 'no-extra', (s) => {
+        delete s['test:extra']
+      })
+      const r = await runBump(fx, '--worktree', wt, '--no-push')
+      assert.equal(r.code, 4, why(r))
+      assert.equal(
+        r.json.checks.find((c) => c.name === 'test:extra')?.ok,
+        false,
+        why(r)
+      )
+    })
+
+    test('a branch that changes a check script gets a note', async () => {
+      const fx = fixture()
+      const wt = editedBranch(fx, 'types-changed', (s) => {
+        s['check:types'] = 'node -e "process.exit(0)"'
+      })
+      const r = await runBump(fx, '--worktree', wt, '--no-push')
+      assert.match(
+        r.json.notes.join('\n'),
+        /package\.json on this branch changes the check script check:types/,
+        why(r)
+      )
+    })
+
+    test('--worktree on a branch with an open PR of another title: exit 2', async () => {
+      const branch = 'chore/bump-deps-20261101'
+      const prs = [
+        {
+          number: 7,
+          state: 'OPEN',
+          title: 'chore: bump packages (wip)',
+          headRefName: branch,
+          baseRefName: 'main',
+          isCrossRepository: false,
+          headRepositoryOwner: { login: 'acme' },
+          body: '',
+        },
+      ]
+      const fx = fixture({ prs })
+      const wt = join(fx.main, '.claude', 'worktrees', 'bump-pr7')
+      fx.git(fx.main, 'fetch', '-q', 'origin')
+      fx.git(fx.main, 'worktree', 'add', '-q', '-b', branch, wt, 'origin/main')
+      const r = await runBump(fx, '--worktree', wt, '--dry-run')
+      assert.equal(r.code, 2, why(r))
+      assert.match(
+        r.json.message,
+        /is also the branch of open PR #7 \(base main\)/
       )
     })
 
