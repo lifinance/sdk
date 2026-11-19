@@ -1837,9 +1837,18 @@ function planChecks(wt, projects, out) {
     pnpmTask('check', ['check'])
   }
   if (has('check:types')) {
+    // `pnpm -r` leaves out the root project. In a workspace with only the root
+    // (`packages: ['.']`), it matches no project and passes without a check.
+    const pkgs = yamlList(
+      read(join(wt, 'pnpm-workspace.yaml')) ?? '',
+      'packages'
+    )
+    const rootOnly = pkgs.every((x) => x === '.' || x === './')
     pnpmTask(
       'check:types',
-      ['-r', '--parallel', '--no-bail', 'check:types'],
+      rootOnly
+        ? ['check:types']
+        : ['-r', '--parallel', '--no-bail', 'check:types'],
       after
     )
   }

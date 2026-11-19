@@ -159,6 +159,25 @@ describe(
       )
     })
 
+    test('a root-only workspace runs the root check:types (pnpm -r matches no project)', async () => {
+      const fy = fixture()
+      const pk = readJson(join(fy.main, 'package.json'))
+      pk.scripts['check:types'] = 'node -e "process.exit(1)"'
+      pushToMain(
+        fy,
+        {
+          'package.json': `${JSON.stringify(pk, null, 2)}\n`,
+          'pnpm-workspace.yaml':
+            "packages:\n  - '.'\nminimumReleaseAge: 1440\n",
+        },
+        'chore: a root-only workspace'
+      )
+      const r = await runBump(fy, '--no-push')
+      const types = r.json.checks.find((c) => c.name === 'check:types')
+      assert.equal(types?.ok, false, `check:types must run and fail: ${why(r)}`)
+      assert.equal(r.code, 4, why(r))
+    })
+
     test('checks: extra package.json scripts run; a bad value is exit 2', async () => {
       const fx = fixture()
       const pj = readJson(join(fx.main, 'package.json'))
