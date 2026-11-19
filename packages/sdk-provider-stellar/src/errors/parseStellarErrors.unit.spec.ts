@@ -17,6 +17,21 @@ describe('parseStellarErrors', () => {
     )
   })
 
+  it.each([
+    'Transaction canceled',
+    'Transaction cancelled',
+    'Transaction was canceled.',
+    'Transaction canceled\n',
+    ' Transaction canceled ',
+  ])(
+    'maps the wallet cancel message %j to SignatureRejected',
+    async (message) => {
+      await expect(codeOf(message)).resolves.toBe(
+        LiFiErrorCode.SignatureRejected
+      )
+    }
+  )
+
   it('maps tx_too_late to TransactionExpired', async () => {
     await expect(codeOf('transaction failed: tx_too_late')).resolves.toBe(
       LiFiErrorCode.TransactionExpired

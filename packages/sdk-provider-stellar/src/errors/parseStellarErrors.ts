@@ -25,6 +25,11 @@ export const parseStellarErrors = async (
   return new SDKError(baseError, step, action)
 }
 
+// Some wallets report a Cancel on the sign prompt only with this text. The
+// whole message must match, so a longer error that starts with these words
+// does not count.
+const walletCancelMessage = /^transaction (was )?cancell?ed\.?$/i
+
 const handleSpecificErrors = (e: any): BaseError => {
   // `callStellarRpcsWithRetry` collapses every rejection into an AggregateError,
   // whose own message says nothing useful. Classify from the error it hides,
@@ -47,7 +52,11 @@ const handleSpecificErrors = (e: any): BaseError => {
   const message: string = typeof e === 'string' ? e : (e?.message ?? '')
   const normalized = message.toLowerCase()
 
-  if (normalized.includes('reject') || normalized.includes('denied')) {
+  if (
+    normalized.includes('reject') ||
+    normalized.includes('denied') ||
+    walletCancelMessage.test(message.trim())
+  ) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, message, e)
   }
 
