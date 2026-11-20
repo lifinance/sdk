@@ -134,31 +134,72 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
 /** For a wallet that rejects with code 4001 and gives no message. */
 const SIGNATURE_REJECTED_MESSAGE = 'The wallet rejected the signature request.'
 
+// Some wallets report a Cancel on the sign prompt only with this text. The
+// whole message must match, so a longer error that starts with these words
+// does not count.
+const walletCancelMessage = /^transaction (was )?cancell?ed\.?$/i
+
+const getWalletRejectMessage = (error: unknown): string | undefined => {
+  const fields = (error ?? {}) as {
+    message?: unknown
+    shortMessage?: unknown
+    cause?: unknown
+  }
+  const causeFields = (fields.cause ?? {}) as { message?: unknown }
+
+  for (const raw of [
+    typeof error === 'string' ? error : undefined,
+    fields.message,
+    fields.shortMessage,
+    causeFields.message,
+    fields.cause,
+  ]) {
+    if (typeof raw === 'string') {
+      const trimmed = raw.trim()
+      const lower = trimmed.toLowerCase()
+      if (
+        lower.includes('reject') ||
+        lower.includes('denied') ||
+        walletCancelMessage.test(trimmed)
+      ) {
+        return raw
+      }
+    }
+  }
+  return undefined
+}
+
 /**
  * Classifies an error thrown by `signer.signTransaction`, the only call to the
  * user's signer in this package. The wallet refused to sign when its error
- * says "reject" (in any case) or carries the EIP-1193 code 4001. Wallets throw
- * an Error, a plain object or a string, so no shape is assumed. An SDK error
- * keeps its code, and any other value is returned as it is.
+ * says "reject" or "denied" (in any case), matches a wallet cancel message,
+ * or carries the EIP-1193 code 4001. Wallets throw an Error, a plain object
+ * or a string, so no shape is assumed. An SDK error keeps its code, and any
+ * other value is returned as it is.
  *
  * A remote or zkLogin signer whose own network call says "reject" is tagged
  * too. That is the safe direction: nothing was signed, so nothing can land.
  */
 function toSuiSignerError(error: unknown): unknown {
-  if (error instanceof BaseError) {
+  if (
+    error instanceof BaseError ||
+    (error as { cause?: unknown })?.cause instanceof BaseError
+  ) {
     return error
   }
   const fields = (error ?? {}) as { code?: unknown; message?: unknown }
-  const message =
+  const rawMessage =
     typeof error === 'string'
       ? error
       : typeof fields.message === 'string'
         ? fields.message
         : undefined
-  if (fields.code === 4001 || message?.toLowerCase().includes('reject')) {
+  const rejectMessage = getWalletRejectMessage(error)
+
+  if (fields.code === 4001 || rejectMessage !== undefined) {
     return new TransactionError(
       LiFiErrorCode.SignatureRejected,
-      message || SIGNATURE_REJECTED_MESSAGE,
+      rejectMessage || rawMessage || SIGNATURE_REJECTED_MESSAGE,
       // Kept as thrown, also when it is a string or a plain object.
       error as Error
     )

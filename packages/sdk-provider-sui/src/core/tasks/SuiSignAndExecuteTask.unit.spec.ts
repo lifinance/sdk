@@ -338,6 +338,31 @@ describe('SuiSignAndExecuteTask', () => {
         'REJECTED BY USER',
       ],
       [
+        'an Error that says "Transaction canceled"',
+        new Error('Transaction canceled'),
+        'Transaction canceled',
+      ],
+      [
+        'an Error that says "Transaction cancelled"',
+        new Error('Transaction cancelled'),
+        'Transaction cancelled',
+      ],
+      [
+        'an Error that says "Transaction was canceled."',
+        new Error('Transaction was canceled.'),
+        'Transaction was canceled.',
+      ],
+      [
+        'an Error that says "Transaction canceled" with whitespace',
+        new Error('  Transaction canceled\n'),
+        '  Transaction canceled\n',
+      ],
+      [
+        'an Error that says "denied"',
+        new Error('User denied the transaction.'),
+        'User denied the transaction.',
+      ],
+      [
         'an object with code 4001 and a message',
         { code: 4001, message: 'x' },
         'x',
@@ -346,6 +371,20 @@ describe('SuiSignAndExecuteTask', () => {
         'an object with code 4001 and no message',
         { code: 4001 },
         'The wallet rejected the signature request.',
+      ],
+      [
+        'an Error with a string cause that cancels',
+        Object.assign(new Error('Unknown Error'), {
+          cause: 'Transaction canceled',
+        }),
+        'Transaction canceled',
+      ],
+      [
+        'an Error with shortMessage that cancels',
+        Object.assign(new Error('Sign failed'), {
+          shortMessage: 'Transaction canceled',
+        }),
+        'Transaction canceled',
       ],
     ])('tags %s as SignatureRejected', async (_label, thrown, message) => {
       const { context, signTransaction, executeTransaction, updateAction } =
@@ -369,7 +408,7 @@ describe('SuiSignAndExecuteTask', () => {
     })
 
     // These also pass with no classification at all. They guard it: it must
-    // not tag an error without "reject", and an SDK error keeps its code.
+    // not tag an error without "reject" or cancel, and an SDK error keeps its code.
     it.each([
       ['an Error without "reject"', new Error('Ledger device is locked')],
       [
@@ -377,11 +416,24 @@ describe('SuiSignAndExecuteTask', () => {
         Object.assign(new Error('Request timed out'), { code: 4900 }),
       ],
       [
+        'an Error whose cancel message has extra words',
+        new Error('Transaction canceled: fee rate too low'),
+      ],
+      [
         'an SDK error that says "rejected"',
         new TransactionError(
           LiFiErrorCode.TransactionConflict,
           'The sponsor rejected the gas payment.'
         ),
+      ],
+      [
+        'an Error wrapping an SDK error',
+        Object.assign(new Error('Wrapper'), {
+          cause: new TransactionError(
+            LiFiErrorCode.TransactionConflict,
+            'The sponsor rejected the gas payment.'
+          ),
+        }),
       ],
     ])('rethrows %s unchanged', async (_label, thrown) => {
       const { context, signTransaction, executeTransaction, updateAction } =
