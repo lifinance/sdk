@@ -36,6 +36,35 @@ afterEach(() => {
 })
 
 describe('Sui user rejection', () => {
+  it('fails with SignatureRejected and sends nothing when the wallet cancels with "Transaction canceled"', async () => {
+    const page = openPage(network)
+    page.signTransaction.mockRejectedValueOnce(
+      new Error('Transaction canceled')
+    )
+    const first = recordRouteUpdates()
+
+    const error = (await executeRoute(
+      page.client,
+      buildRoute('swap', page.walletAddress),
+      { updateRouteHook: first.hook }
+    ).catch((e: unknown) => e)) as SDKError
+
+    expect(error.code).toBe(LiFiErrorCode.SignatureRejected)
+    expect(signedBytes(page)).toEqual(network.quotes)
+    expect(network.executed).toEqual([])
+    expect(first.changes).toEqual([
+      'SWAP:STARTED',
+      'SWAP:ACTION_REQUIRED',
+      'SWAP:FAILED',
+    ])
+    const stored = first.snapshots.at(-1)
+    expect(stored).toBeDefined()
+    expect(stepOf(stored!).execution).toMatchObject({
+      status: 'FAILED',
+      error: { code: LiFiErrorCode.SignatureRejected },
+    })
+  })
+
   it('fails the step with SignatureRejected, sends nothing, and Try again asks the wallet again', async () => {
     const page = openPage(network)
     rejectNextSignature(page)
