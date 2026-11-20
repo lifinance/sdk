@@ -32,5 +32,6 @@ jobs:
         run: pnpm build
       - name: Check types
         run: pnpm check:types
+      # Run the full workspace suite on PRs and when called by publish verification.
       - name: Run tests
         run: pnpm test
