@@ -2,6 +2,7 @@ import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { getAllowance } from '../../actions/getAllowance.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
+import { getRequiredAllowance } from './helpers/getApprovalAmount.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { resolveAllowanceSpender } from './helpers/resolveAllowanceSpender.js'
 
@@ -24,12 +25,12 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
     })
 
     const executionStrategy = await getEthereumExecutionStrategy(context)
-    const { spenderAddress } = await resolveAllowanceSpender(
+    const { permit2Supported, spenderAddress } = await resolveAllowanceSpender(
       context,
       executionStrategy
     )
 
-    const fromAmount = BigInt(step.action.fromAmount)
+    const requiredAllowance = getRequiredAllowance(context, permit2Supported)
 
     const updatedClient = await checkClient(step)
     if (!updatedClient) {
@@ -51,7 +52,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       status: 'COMPLETED',
       context: {
         hasAllowance: allowance > 0n,
-        hasSufficientAllowance: fromAmount <= allowance,
+        hasSufficientAllowance: requiredAllowance <= allowance,
         executionStrategy,
         allowanceSpender: spenderAddress,
       },

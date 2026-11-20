@@ -33,6 +33,7 @@ import {
   buildTransactionRequest,
   CHAIN_ID,
   createScenario,
+  decodeApproval,
   FROM_ADDRESS,
   FROM_AMOUNT,
   FROM_TOKEN_ADDRESS,
@@ -147,5 +148,35 @@ describe('an ERC-20 same-chain swap with enough allowance', () => {
     // main: the final same-chain txHash/txLink come from the LI.FI /status answer (core WaitForTransactionStatusTask)
     expect(swap?.txHash).toBe(txHash)
     expect(swap?.txLink).toBe(`https://polygonscan.example/tx/${txHash}`)
+  })
+})
+
+describe('an ERC-20 swap whose estimate asks for a larger approvalAmount', () => {
+  const APPROVAL_AMOUNT = 3n * BigInt(FROM_AMOUNT)
+
+  const buildScenario = (): Scenario => {
+    const step = buildStep({
+      transactionRequest: buildTransactionRequest({ data: SWAP_CALLDATA }),
+    })
+    Object.assign(step.estimate, { approvalAmount: APPROVAL_AMOUNT.toString() })
+    return createScenario({
+      chain: CLASSIC_CHAIN,
+      step,
+      allowance: BigInt(FROM_AMOUNT),
+    })
+  }
+
+  it('treats an allowance covering only fromAmount as short and approves approvalAmount', async () => {
+    const scenario = buildScenario()
+
+    await scenario.run()
+
+    const [approve, swap] = scenario.events('sendTransaction')
+    expect(approve.to).toBe(FROM_TOKEN_ADDRESS)
+    expect(decodeApproval(approve.data as Hex)).toEqual({
+      spender: APPROVAL_ADDRESS,
+      amount: APPROVAL_AMOUNT,
+    })
+    expect(swap).toMatchObject({ to: APPROVAL_ADDRESS, data: SWAP_CALLDATA })
   })
 })
