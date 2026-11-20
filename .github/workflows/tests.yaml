@@ -32,6 +32,7 @@ jobs:
         run: pnpm build
       - name: Check types
         run: pnpm check:types
-      # Run the full workspace suite on PRs and when called by publish verification.
+      # Keep test files isolated, but use lighter worker threads for PRs.
+      # Publish verification keeps the default Vitest pool.
       - name: Run tests
-        run: pnpm test
+        run: pnpm test${{ github.event_name == 'pull_request' && ' --pool=threads' || '' }}
