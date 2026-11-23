@@ -49,9 +49,8 @@ vi.mock('@lifi/sdk', async (importActual) => {
   }
 })
 
-const { SolanaStandardWaitForTransactionTask } = await import(
-  './SolanaStandardWaitForTransactionTask.js'
-)
+const { SolanaStandardWaitForTransactionTask } =
+  await import('./SolanaStandardWaitForTransactionTask.js')
 const { MAX_RESEND_AGE_MS } = await import('@lifi/sdk')
 
 const updateAction = vi.fn()

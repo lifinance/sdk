@@ -28,7 +28,6 @@ vi.mock('../../utils/isPsbtFinalized.js', () => ({
 
 import { signPsbt, TransactionNotFoundError } from '@bigmi/core'
 import type { BitcoinStepExecutorContext } from '../../types.js'
-import { BitcoinSignAndExecuteTask } from './BitcoinSignAndExecuteTask.js'
 import {
   allTransportsFailed,
   DECODE_FAILED,
@@ -37,6 +36,7 @@ import {
   rpcError,
   timeoutError,
 } from './bitcoinRpcErrors.unit.mock.js'
+import { BitcoinSignAndExecuteTask } from './BitcoinSignAndExecuteTask.js'
 import { MEMPOOL_STATE_REJECT_REASONS } from './classifyBitcoinSendFailure.js'
 
 const SENDER = 'bc1qsender'

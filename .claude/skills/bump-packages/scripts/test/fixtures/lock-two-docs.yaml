@@ -1,0 +1,61 @@
+---
+lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    configDependencies: {}
+    packageManagerDependencies:
+      pnpm:
+        specifier: 12.14.0
+        version: 12.14.0
+
+packages:
+
+  pnpm@12.14.0:
+    resolution: {integrity: sha512-x}
+
+snapshots:
+
+  pnpm@12.14.0: {}
+
+---
+lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      wagmi:
+        specifier: ^3.7.7
+        version: 3.7.7(viem@2.57.7)
+
+packages:
+
+  '@scope/pkg@1.2.3':
+    resolution: {integrity: sha512-a}
+
+  viem@2.57.7:
+    resolution: {integrity: sha512-b}
+
+  wagmi@3.7.7:
+    resolution: {integrity: sha512-c}
+
+  wagmi@2.19.5:
+    resolution: {integrity: sha512-d}
+
+snapshots:
+
+  '@scope/pkg@1.2.3': {}
+
+  viem@2.57.7: {}
+
+  wagmi@3.7.7(viem@2.57.7):
+    dependencies:
+      viem: 2.57.7
+
+  wagmi@3.7.7(viem@2.57.16):
+    dependencies:
+      viem: 2.57.16
+
+  wagmi@2.19.5(viem@2.57.7): {}

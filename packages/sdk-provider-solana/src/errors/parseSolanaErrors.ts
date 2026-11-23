@@ -30,16 +30,25 @@ export const parseSolanaErrors = async (
 const userRejectionMessage =
   /(^|\W)user\W+(has\W+)?(rejected|denied|cancell?ed)|\b(rejected|denied|cancell?ed)\W+by\W+(the\W+)?user\b/i
 
+// Some wallets report a Cancel on the sign prompt only with this text (an
+// Android in-app wallet). The whole message must match, so a longer error that
+// starts with these words does not count.
+const walletCancelMessage = /^transaction (was )?cancell?ed\.?$/i
+
 /**
  * The SDK calls the Wallet Standard features directly, so a wallet's own error
  * arrives here unwrapped. Wallets report a rejection with the EIP-1193 code
- * 4001 or only with a message. An `AbortError` is not a rejection: nothing
- * says the user caused it. The SDK's own errors keep their code.
+ * 4001 or only with a message. A wallet cancel is a rejection too: the prompt
+ * was open and the wallet sent nothing, as with `WalletSignTransactionError`.
+ * An `AbortError` is not a rejection: nothing says the user caused it. The
+ * SDK's own errors keep their code.
  */
 const isUserRejection = (e: any): boolean =>
   !(e instanceof BaseError) &&
   (e.code === 4001 ||
-    (typeof e.message === 'string' && userRejectionMessage.test(e.message)))
+    (typeof e.message === 'string' &&
+      (userRejectionMessage.test(e.message) ||
+        walletCancelMessage.test(e.message.trim()))))
 
 const handleSpecificErrors = (e: any) => {
   if (e.name === 'WalletSignTransactionError') {

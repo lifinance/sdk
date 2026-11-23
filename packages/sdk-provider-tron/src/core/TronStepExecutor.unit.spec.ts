@@ -5,12 +5,12 @@ import {
   WaitForTransactionStatusTask,
 } from '@lifi/sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { TronStepExecutor } from './TronStepExecutor.js'
 import { TronCheckAllowanceAfterPrepareTask } from './tasks/TronCheckAllowanceAfterPrepareTask.js'
 import { TronCheckAllowanceTask } from './tasks/TronCheckAllowanceTask.js'
 import { TronSetAllowanceTask } from './tasks/TronSetAllowanceTask.js'
 import { TronSignAndExecuteTask } from './tasks/TronSignAndExecuteTask.js'
 import { TronWaitForTransactionTask } from './tasks/TronWaitForTransactionTask.js'
+import { TronStepExecutor } from './TronStepExecutor.js'
 
 // TRC-20 USDT: not the Tron zero address, so the allowance gate depends only
 // on the approval address and the action.

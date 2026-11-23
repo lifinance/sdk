@@ -737,6 +737,8 @@ export interface FakeWallet {
   readonly signCalls: SignCall[]
   /** Rejects this many next sign requests the way a user does. */
   rejectNext: number
+  /** What a rejected sign request throws. Default: a 4001 user rejection. */
+  rejectWith: () => Error
 }
 
 /**
@@ -764,7 +766,7 @@ export const createFakeWallet = async (
     if (fake.rejectNext > 0) {
       fake.rejectNext -= 1
       call.rejected = true
-      throw userRejection()
+      throw fake.rejectWith()
     }
     const outputs = await feature.signTransaction(...inputs)
     call.outputs = outputs.map((output) =>
@@ -787,6 +789,7 @@ export const createFakeWallet = async (
     address: adapter.accounts[0].address as Address,
     signCalls: [],
     rejectNext: 0,
+    rejectWith: userRejection,
   }
   return fake
 }

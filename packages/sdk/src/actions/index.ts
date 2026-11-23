@@ -57,8 +57,8 @@ import { getTokens } from './getTokens.js'
 import { getTools } from './getTools.js'
 import { getTransactionHistory } from './getTransactionHistory.js'
 import {
-  type PatchContractCallsResponse,
   patchContractCalls,
+  type PatchContractCallsResponse,
 } from './patchContractCalls.js'
 import { relayTransaction } from './relayTransaction.js'
 
@@ -145,6 +145,8 @@ export type Actions = {
    * @param params - The configuration of the requested relayer quote
    * @param options - Request options
    * @returns Quote from a relayer
+   * @deprecated The legacy gasless relayer service is shut down. Use
+   * `getRoutes` with `options.gasless: true`.
    */
   getRelayerQuote: (
     params: QuoteRequestFromAmount,

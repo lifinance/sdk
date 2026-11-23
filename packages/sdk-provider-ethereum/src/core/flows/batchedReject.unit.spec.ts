@@ -17,7 +17,6 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   return {
     ...actual,
     getStepTransaction: vi.fn(),
-    getRelayerQuote: vi.fn(),
     relayTransaction: vi.fn(),
     // The terminal destination-status watcher polls `getStatus` over HTTP.
     // Here it stands for a `/status` answer of DONE, so a step that gets this

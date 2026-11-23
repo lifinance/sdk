@@ -7,7 +7,6 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   return {
     ...actual,
     getStepTransaction: vi.fn(),
-    getRelayerQuote: vi.fn(),
     relayTransaction: vi.fn(),
     // The terminal destination-status watcher polls `getStatus` over HTTP on a
     // 5s interval and never settles under test. It runs after everything these
@@ -79,11 +78,9 @@ describe('C3 — order flow picks the /quote endpoint, never the relayer quote',
     await scenario.run()
 
     // The endpoint choice is the assertion that matters most here: an order
-    // carries typed data and is relayed, but `getUpdatedStep` only reaches
-    // `getRelayerQuote` for a *gasless* step, and an EIP-2612 permit is not
-    // one.
+    // carries typed data and is relayed, and it is re-quoted through
+    // `/advanced/stepTransaction` like every step.
     expect(scenario.events('getStepTransaction')).toHaveLength(1)
-    expect(scenario.events('getRelayerQuote')).toEqual([])
 
     expect(
       scenario.events('signTypedData').map((event) => event.primaryType)
@@ -125,7 +122,6 @@ describe('C3 — order flow picks the /quote endpoint, never the relayer quote',
 
     // The headline assertion, on the retry as well as the first attempt.
     expect(scenario.events('getStepTransaction', retryStartsAt)).toHaveLength(1)
-    expect(scenario.events('getRelayerQuote')).toEqual([])
     expect(scenario.events('relayTransaction', retryStartsAt)).toHaveLength(1)
 
     // Pinned, and it looks wrong: `prepareRestart` clears the execution actions

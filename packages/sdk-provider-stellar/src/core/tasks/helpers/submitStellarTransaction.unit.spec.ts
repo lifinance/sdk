@@ -16,9 +16,8 @@ vi.mock('@stellar/stellar-sdk', () => ({
   TransactionBuilder: { fromXdr: () => ({}) },
 }))
 
-const { submitStellarTransaction } = await import(
-  './submitStellarTransaction.js'
-)
+const { submitStellarTransaction } =
+  await import('./submitStellarTransaction.js')
 
 const submit = () =>
   submitStellarTransaction({} as never, 'ENVELOPE_XDR', 'passphrase')

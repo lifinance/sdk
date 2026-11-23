@@ -9,11 +9,11 @@ import {
   NETWORK_PASSPHRASE,
   openPage,
   recordRouteUpdates,
+  signedEnvelopes,
   STATUS_EXPLORER_URL,
   STELLAR_EXPLORER_URL,
-  SWAP_RECEIVED_AMOUNT,
-  signedEnvelopes,
   stepOf,
+  SWAP_RECEIVED_AMOUNT,
 } from './harness.mock.js'
 
 let network: FakeStellarNetwork

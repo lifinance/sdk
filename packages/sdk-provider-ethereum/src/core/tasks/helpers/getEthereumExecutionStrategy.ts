@@ -1,4 +1,4 @@
-import type { TransactionMethodType } from '@lifi/sdk'
+import { isGaslessStep, type TransactionMethodType } from '@lifi/sdk'
 import { isBatchingSupported } from '../../../actions/isBatchingSupported.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
 import { isPermit2AllowanceLane } from '../../../utils/getTypedDataLane.js'
@@ -60,7 +60,14 @@ export async function getEthereumExecutionStrategy(
     return strategyAfterPrepare
   }
 
+  // A gasless step only executes through the relay. Before prepare it has no
+  // typed data yet, so the relay fee is the only signal.
+  if (isGaslessStep(step)) {
+    return 'relayed'
+  }
+
   const atomicityNotReady = !!retryParams?.atomicityNotReady
+
   // Declared by the backend. It is the only signal that reaches the allowance
   // tasks, which run before a `transactionRequest` can exist.
   if (step.executionType === 'message') {
@@ -91,9 +98,11 @@ export async function getEthereumExecutionStrategy(
   }
 
   const updatedClient = (await checkClient(step)) ?? ethereumClient
-  const batchingSupported = await isBatchingSupported(client, {
+  // A re-quote changes the step, not the wallet: prepare reuses the answer the
+  // allowance tasks acted on, so a late read cannot flip the strategy.
+  context.batchingSupported ??= isBatchingSupported(client, {
     client: updatedClient,
     chainId: fromChain.id,
   })
-  return batchingSupported ? 'batched' : 'standard'
+  return (await context.batchingSupported) ? 'batched' : 'standard'
 }

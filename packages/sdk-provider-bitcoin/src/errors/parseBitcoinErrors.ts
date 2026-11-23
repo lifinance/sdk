@@ -25,6 +25,38 @@ export const parseBitcoinErrors = async (
   return new SDKError(baseError, step, action)
 }
 
+// Some wallets report a Cancel on the sign prompt only with this text (an
+// injected Unisat provider). The whole message must match, so a longer error
+// that starts with these words does not count. The wallet sent nothing, so the
+// error maps to SignatureRejected, as a user rejection does.
+const walletCancelMessage = /^transaction (was )?cancell?ed\.?$/i
+
+const getWalletCancelMessage = (e: any): string | undefined => {
+  // An SDK error keeps its code also as the cause of another error. The
+  // caller returns an SDK error itself before this check.
+  if (e.cause instanceof BaseError) {
+    return undefined
+  }
+  // bigmi wraps a wallet error as "Unknown Error", with the wallet error as
+  // the cause. A wallet that rejects with a string gives a string cause. The
+  // Ctrl connector puts the wallet text in the short message of a bigmi
+  // error, which bigmi passes on unchanged.
+  for (const message of [
+    e.message,
+    e.shortMessage,
+    e.cause?.message,
+    e.cause,
+  ]) {
+    if (
+      typeof message === 'string' &&
+      walletCancelMessage.test(message.trim())
+    ) {
+      return message.trim()
+    }
+  }
+  return undefined
+}
+
 const handleSpecificErrors = (e: any) => {
   // txn-mempool-conflict
   if (
@@ -46,6 +78,15 @@ const handleSpecificErrors = (e: any) => {
 
   if (e instanceof BaseError) {
     return e
+  }
+
+  const walletCancel = getWalletCancelMessage(e)
+  if (walletCancel) {
+    return new TransactionError(
+      LiFiErrorCode.SignatureRejected,
+      walletCancel,
+      e
+    )
   }
 
   return new UnknownError(e.message || ErrorMessage.UnknownError, e)

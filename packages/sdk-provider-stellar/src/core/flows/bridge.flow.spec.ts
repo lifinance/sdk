@@ -12,8 +12,8 @@ import {
   NETWORK_PASSPHRASE,
   openPage,
   recordRouteUpdates,
-  STELLAR_EXPLORER_URL,
   signedEnvelopes,
+  STELLAR_EXPLORER_URL,
   stepOf,
 } from './harness.mock.js'
 

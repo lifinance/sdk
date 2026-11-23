@@ -70,12 +70,10 @@ vi.mock('@solana/kit', async (importActual) => {
   }
 })
 
-const { SolanaSignAndExecuteTask } = await import(
-  './SolanaSignAndExecuteTask.js'
-)
-const { LiFiErrorCode, StatusManager, TransactionError } = await import(
-  '@lifi/sdk'
-)
+const { SolanaSignAndExecuteTask } =
+  await import('./SolanaSignAndExecuteTask.js')
+const { LiFiErrorCode, StatusManager, TransactionError } =
+  await import('@lifi/sdk')
 
 const updateAction = vi.fn()
 const getWalletAccount = vi.fn((_step: unknown) => ({}))

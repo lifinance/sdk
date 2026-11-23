@@ -1,5 +1,5 @@
 import { ChainId } from '@lifi/types'
-import { delay, HttpResponse, http } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import { createClient } from '../client/createClient.js'
 import { HTTPError } from '../errors/httpError.js'

@@ -9,8 +9,8 @@ import {
   clearBigmiObservers,
   destinationTxHashOf,
   type FakeBitcoinNetwork,
-  FROM_AMOUNT,
   finalizedHexOf,
+  FROM_AMOUNT,
   installFakeBitcoinNetwork,
   liveBigmiObservers,
   openPage,
@@ -42,6 +42,53 @@ afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllGlobals()
   }
+})
+
+describe('Bitcoin wallet cancel', () => {
+  it('fails with SignatureRejected and sends nothing when the wallet cancels with only a message', async () => {
+    const page = await openPage(network)
+    const updates = recordRouteUpdates()
+    // An injected Unisat provider, on Cancel; bigmi wraps it as
+    // "Unknown Error" (Sentry JUMPER-FRONT-XC).
+    page.signPsbt.mockRejectedValue(new Error('Transaction canceled'))
+
+    const error = await page
+      .executeRoute(buildRoute(page.walletAddress), {
+        updateRouteHook: updates.hook,
+      })
+      .then(
+        () => undefined,
+        (reason: unknown) => reason as { code?: unknown }
+      )
+
+    expect(error?.code).toBe(LiFiErrorCode.SignatureRejected)
+    // The wallet is asked once: the harness client sets retryCount: 0, as a
+    // connector client from @bigmi/client does.
+    expect(page.signPsbt).toHaveBeenCalledTimes(1)
+    expect(network.sent).toEqual([])
+    expect(network.statusRequests).toEqual([])
+    expect(updates.changes).toEqual([
+      'CROSS_CHAIN:STARTED',
+      'CROSS_CHAIN:ACTION_REQUIRED',
+      'CROSS_CHAIN:FAILED',
+    ])
+    const failed = updates.snapshots.at(-1) as RouteExtended
+    const canceled = {
+      message: 'Transaction canceled',
+      code: LiFiErrorCode.SignatureRejected,
+    }
+    expect(stepOf(failed).execution?.status).toBe('FAILED')
+    expect(stepOf(failed).execution?.error).toEqual(canceled)
+    expect(stepOf(failed).execution?.actions).toEqual([
+      {
+        type: 'CROSS_CHAIN',
+        status: 'FAILED',
+        chainId: ChainId.BTC,
+        error: canceled,
+      },
+    ])
+    expect(network.balanceOf(page.walletAddress)).toBe(WALLET_BALANCE)
+  })
 })
 
 describe('Bitcoin user rejection', () => {

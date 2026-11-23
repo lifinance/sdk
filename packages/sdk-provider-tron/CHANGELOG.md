@@ -1,5 +1,14 @@
 # @lifi/sdk-provider-tron
 
+## 4.1.11
+
+### Patch Changes
+
+- [#545](https://github.com/lifinance/sdk/pull/545) [`37688cc`](https://github.com/lifinance/sdk/commit/37688cc732187f08f429062e506b67dee2a2a30a) Thanks [@chybisov](https://github.com/chybisov)! - Update `tronweb` to 6.5.2.
+  Update `viem` to 2.57.19.
+- Updated dependencies [[`aa5d2ff`](https://github.com/lifinance/sdk/commit/aa5d2ffe2acccc7c7e17eac09562f491eb9cc0ac), [`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354), [`3129a50`](https://github.com/lifinance/sdk/commit/3129a50fadf41317592b2403c42f2816540cb045)]:
+  - @lifi/sdk@4.13.0
+
 ## 4.1.10
 
 ### Patch Changes

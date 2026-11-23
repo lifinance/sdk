@@ -1,0 +1,47 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 80,
+  "tabWidth": 2,
+  "useTabs": false,
+  "endOfLine": "lf",
+  "semi": false,
+  "singleQuote": true,
+  "jsxSingleQuote": false,
+  "quoteProps": "as-needed",
+  "trailingComma": "es5",
+  "arrowParens": "always",
+  "bracketSpacing": true,
+  "bracketSameLine": false,
+  "sortPackageJson": false,
+  "sortImports": {
+    "newlinesBetween": false,
+    "partitionByNewline": true
+  },
+  "overrides": [
+    {
+      "files": ["**/*.css"],
+      "options": {
+        "singleQuote": false
+      }
+    },
+    {
+      "files": ["**/*.yaml", "**/*.yml"],
+      "options": {
+        "bracketSpacing": false
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "**/*.md",
+    "**/*.mdx",
+    "**/*.html",
+    "**/*.toml",
+    "**/*.svelte",
+    "**/*.vue",
+    "**/*.svg",
+    "pnpm-lock.yaml",
+    "**/*.json",
+    "**/*.jsonc",
+    ".claude/skills/bump-packages/scripts/test/fixtures/**"
+  ]
+}

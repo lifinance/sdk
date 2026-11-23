@@ -1,10 +1,9 @@
 import {
   convertQuoteToRoute,
   type ExecutionOptions,
-  type ExtendedChain,
   getContractCallsQuote,
-  getRelayerQuote,
   getStepTransaction,
+  isGaslessStep,
   LiFiErrorCode,
   type LiFiStepExtended,
   patchContractCalls,
@@ -14,24 +13,19 @@ import {
 } from '@lifi/sdk'
 import { PatcherMagicNumber } from '../../../permits/constants.js'
 import { isContractCallStep } from '../../../utils/isContractCallStep.js'
-import { isGaslessStep } from '../../../utils/isGaslessStep.js'
 
 /** Re-quotes the step through the endpoint that matches how it will execute. */
 export const getUpdatedStep = async (
   client: SDKClient,
   step: LiFiStepExtended,
-  fromChain: ExtendedChain,
   executionOptions?: ExecutionOptions,
   signedTypedData?: SignedTypedData[]
 ): Promise<LiFiStepExtended> => {
   if (isContractCallStep(step)) {
     return getContractCallUpdatedStep(client, step, executionOptions)
   }
-  // Do NOT substitute `hasRelayerMessage` for `isGaslessStep`: an `Order` retry
-  // would fetch a relayer quote instead of `/advanced/stepTransaction`. Pinned
-  // by `re-quotes an Order step ...` in `getUpdatedStep.unit.spec.ts`.
-  if (isGaslessStep(step, fromChain)) {
-    return getRelayerUpdatedStep(client, step)
+  if (isGaslessStep(step)) {
+    return getGaslessUpdatedStep(client, step)
   }
   return getStandardUpdatedStep(client, step, signedTypedData)
 }
@@ -128,25 +122,32 @@ const getContractCallUpdatedStep = async (
   }
 }
 
-const getRelayerUpdatedStep = async (
+/**
+ * Fields `/advanced/stepTransaction` adds to a gasless step. They are not in
+ * `@lifi/types` yet.
+ */
+export type GaslessStepFields = {
+  expiresAt?: number
+  authorization?: unknown
+}
+
+/**
+ * A gasless step is re-quoted as the routes response gave it: the backend
+ * rejects typed data without signatures, and it builds new typed data, a new
+ * deadline and new nonces for every quote anyway.
+ */
+const getGaslessUpdatedStep = async (
   client: SDKClient,
   step: LiFiStepExtended
 ): Promise<LiFiStepExtended> => {
-  const updatedRelayedStep = await getRelayerQuote(client, {
-    fromChain: step.action.fromChainId,
-    fromToken: step.action.fromToken.address,
-    fromAddress: step.action.fromAddress!,
-    fromAmount: step.action.fromAmount,
-    toChain: step.action.toChainId,
-    toToken: step.action.toToken.address,
-    slippage: step.action.slippage,
-    toAddress: step.action.toAddress,
-    allowBridges: [step.tool],
-  })
-  return {
-    ...updatedRelayedStep,
-    id: step.id,
-  }
+  const {
+    typedData: _typedData,
+    expiresAt: _expiresAt,
+    authorization: _authorization,
+    execution: _execution,
+    ...restStep
+  } = step as LiFiStepExtended & GaslessStepFields
+  return getStepTransaction(client, restStep)
 }
 
 const getStandardUpdatedStep = async (

@@ -83,7 +83,8 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
         spenderAddress: fromChain.permit2Proxy as Address,
         amount: fromAmount,
         ownerAddress: updatedClient.account!.address,
-      }
+      },
+      fromChain.id
     )
 
     if (!nativePermitData) {

@@ -1,5 +1,25 @@
 # @lifi/sdk-provider-bitcoin
 
+## 4.1.5
+
+### Patch Changes
+
+- [#557](https://github.com/lifinance/sdk/pull/557) [`252373d`](https://github.com/lifinance/sdk/commit/252373dfad29ce3bbca179c12eee7e69a217df09) Thanks [@chybisov](https://github.com/chybisov)! - Update `@bigmi/core` to 0.9.5.
+  Update `viem` to 2.58.0.
+
+- [#555](https://github.com/lifinance/sdk/pull/555) [`e2541bd`](https://github.com/lifinance/sdk/commit/e2541bde4b5fcd6b73d2711644b4aa86216a0362) Thanks [@chybisov](https://github.com/chybisov)! - A wallet error with only the text "Transaction canceled" now gets the code `SignatureRejected` (1012), not `UnknownError` (1000). The SDK already uses this code when the user rejects a sign request. Apps can then show the rejection message and do not report the cancel as a failure.
+
+## 4.1.4
+
+### Patch Changes
+
+- [#553](https://github.com/lifinance/sdk/pull/553) [`aa5d2ff`](https://github.com/lifinance/sdk/commit/aa5d2ffe2acccc7c7e17eac09562f491eb9cc0ac) Thanks [@chybisov](https://github.com/chybisov)! - Update `@bigmi/core` to 0.9.4.
+  Update `viem` to 2.57.20.
+
+- [#539](https://github.com/lifinance/sdk/pull/539) [`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: @lifi/types to 18.16.0, bitcoinjs-lib to 7.0.5, viem to 2.57.17, @solana/kit to 8.6.0, @stellar/stellar-sdk to 17.4.0, @mysten/sui to 2.39.1.
+- Updated dependencies [[`aa5d2ff`](https://github.com/lifinance/sdk/commit/aa5d2ffe2acccc7c7e17eac09562f491eb9cc0ac), [`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354), [`3129a50`](https://github.com/lifinance/sdk/commit/3129a50fadf41317592b2403c42f2816540cb045)]:
+  - @lifi/sdk@4.13.0
+
 ## 4.1.3
 
 ### Patch Changes

@@ -131,10 +131,7 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
             })
           }
           return map
-        }, new Map<
-          string,
-          { address: string; sigHash: number; signingIndexes: number[] }
-        >())
+        }, new Map<string, { address: string; sigHash: number; signingIndexes: number[] }>())
         .values()
     )
 

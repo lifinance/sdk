@@ -1,0 +1,100 @@
+{
+  "next@16.4.2": {
+    "current": "16.4.2",
+    "latest": "16.4.5",
+    "wanted": "16.4.2",
+    "isDeprecated": false,
+    "dependencyType": "dependencies",
+    "dependentPackages": [
+      {
+        "name": "nextjs",
+        "location": "/repo/nextjs"
+      },
+      {
+        "name": "@lifi/widget-playground-next",
+        "location": "/repo/@lifi/widget-playground-next"
+      }
+    ]
+  },
+  "next@15.5.28": {
+    "current": "15.5.28",
+    "latest": "16.4.5",
+    "wanted": "15.5.28",
+    "isDeprecated": false,
+    "dependencyType": "dependencies",
+    "dependentPackages": [
+      {
+        "name": "nextjs15",
+        "location": "/repo/nextjs15"
+      }
+    ]
+  },
+  "vite-plugin-node-polyfills@0.26.0": {
+    "current": "0.26.0",
+    "latest": "0.28.0",
+    "wanted": "0.26.0",
+    "isDeprecated": false,
+    "dependencyType": "dependencies",
+    "dependentPackages": [
+      {
+        "name": "nuxt-app",
+        "location": "/repo/nuxt-app"
+      }
+    ]
+  },
+  "vite-plugin-node-polyfills@0.26.0 (dev)": {
+    "current": "0.26.0",
+    "latest": "0.28.0",
+    "wanted": "0.26.0",
+    "isDeprecated": false,
+    "dependencyType": "devDependencies",
+    "dependentPackages": [
+      {
+        "name": "deposit-flow",
+        "location": "/repo/deposit-flow"
+      },
+      {
+        "name": "dynamic",
+        "location": "/repo/dynamic"
+      },
+      {
+        "name": "nft-checkout",
+        "location": "/repo/nft-checkout"
+      }
+    ]
+  },
+  "viem": {
+    "current": "2.57.7",
+    "latest": "2.57.17",
+    "wanted": "2.57.7",
+    "isDeprecated": false,
+    "dependencyType": "dependencies",
+    "dependentPackages": [
+      {
+        "name": "connectkit",
+        "location": "/repo/connectkit"
+      },
+      {
+        "name": "deposit-flow",
+        "location": "/repo/deposit-flow"
+      },
+      {
+        "name": "dynamic",
+        "location": "/repo/dynamic"
+      }
+    ]
+  },
+  "lodash.isequal": {
+    "current": "4.5.0",
+    "latest": "4.5.0",
+    "wanted": "4.5.0",
+    "isDeprecated": true,
+    "dependencyType": "dependencies",
+    "dependentPackages": [
+      {
+        "name": "@lifi/widget-playground",
+        "location": "/repo/@lifi/widget-playground"
+      }
+    ]
+  }
+}

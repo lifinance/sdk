@@ -22,7 +22,8 @@
  *     a real PSBT that spends the wallet's UTXOs.
  * - The wallet: a bigmi client with a `custom` transport whose `signPsbt`
  *   signs with a real throwaway secp256k1 key (p2wpkh), so every signature
- *   and txid is real. `signPsbt` is spied.
+ *   and txid is real. `signPsbt` is spied. As in @bigmi/client, the client
+ *   has `retryCount: 0`.
  *
  * Anything else (an unknown URL or method, an invalid signature, a `/status`
  * for a hash that is not a mined deposit to the bridge vault) is recorded in
@@ -72,10 +73,10 @@ import {
   address as btcAddress,
   crypto as btcCrypto,
   networks,
-  Psbt,
   payments,
-  type Signer,
+  Psbt,
   script,
+  type Signer,
   Transaction,
 } from 'bitcoinjs-lib'
 import { type Mock, vi } from 'vitest'
@@ -974,15 +975,20 @@ export const openPage = async (
       publicKey: toHex(key.publicKey),
       purpose: 'payment',
     } as never,
-    transport: custom({
-      async request({ method, params }: { method: string; params: unknown }) {
-        if (method !== 'signPsbt') {
-          network.unexpected.push(`wallet ${method}`)
-          throw new Error(`Fake wallet: ${method} is not implemented`)
-        }
-        return signPsbt(params as SignPsbtParameters)
+    transport: custom(
+      {
+        async request({ method, params }: { method: string; params: unknown }) {
+          if (method !== 'signPsbt') {
+            network.unexpected.push(`wallet ${method}`)
+            throw new Error(`Fake wallet: ${method} is not implemented`)
+          }
+          return signPsbt(params as SignPsbtParameters)
+        },
       },
-    }),
+      // As in a connector client from @bigmi/client: a wallet request is
+      // not retried, so each request opens the prompt once.
+      { retryCount: 0 }
+    ),
   })
 
   const client = sdk.createClient({

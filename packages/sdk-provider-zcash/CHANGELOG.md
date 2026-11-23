@@ -1,5 +1,13 @@
 # @lifi/sdk-provider-zcash
 
+## 4.0.3
+
+### Patch Changes
+
+- [#539](https://github.com/lifinance/sdk/pull/539) [`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354) Thanks [@chybisov](https://github.com/chybisov)! - Bump @noble/hashes and @scure/base to 2.4.0. Both are ESM-only, so a CommonJS consumer needs Node 20.19 or later to load the provider.
+- Updated dependencies [[`aa5d2ff`](https://github.com/lifinance/sdk/commit/aa5d2ffe2acccc7c7e17eac09562f491eb9cc0ac), [`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354), [`3129a50`](https://github.com/lifinance/sdk/commit/3129a50fadf41317592b2403c42f2816540cb045)]:
+  - @lifi/sdk@4.13.0
+
 ## 4.0.2
 
 ### Patch Changes

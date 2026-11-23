@@ -14,12 +14,17 @@
     "changeset:version": "changeset version && pnpm build:version && pnpm install --lockfile-only && pnpm check:write",
     "changeset:prepublish": "pnpm build && pnpm -r --parallel build:prerelease",
     "changeset:publish": "pnpm changeset:prepublish && pnpm --config.verify-deps-before-run=false changeset publish",
-    "check": "biome check",
-    "check:write": "biome check --write",
-    "check:write:unsafe": "biome check --write --unsafe",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "check": "oxlint && oxfmt --check",
+    "check:write": "oxlint --fix && oxfmt",
+    "check:write:unsafe": "oxlint --fix --fix-dangerously && oxfmt",
     "check:types": "pnpm -r --parallel check:types",
     "check:circular-deps": "pnpm -r --parallel check:circular-deps",
     "test": "pnpm -r --parallel test",
+    "test:affected": "pnpm -r --parallel test:affected",
     "test:cov": "pnpm -r --parallel test:cov",
     "test:unit": "pnpm -r --parallel test:unit",
     "link:all": "pnpm -r exec pnpm link --global",
@@ -35,25 +40,26 @@
     "postinstall": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
     "@changesets/changelog-github": "^1.0.1",
     "@changesets/cli": "^3.0.3",
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
-    "@size-limit/esbuild": "^14.2.0",
-    "@size-limit/file": "^14.2.0",
-    "@types/node": "^26.6.5",
+    "@size-limit/esbuild": "^14.3.0",
+    "@size-limit/file": "^14.3.0",
+    "@types/node": "^26.6.6",
     "@types/ws": "^8.18.2",
-    "@vitest/coverage-v8": "^5.0.5",
+    "@vitest/coverage-v8": "^5.1.1",
     "husky": "^9.1.7",
-    "knip": "^6.42.0",
-    "size-limit": "^14.2.0",
-    "tsdown": "^0.23.1",
+    "knip": "^6.45.1",
+    "oxfmt": "0.79.0",
+    "oxlint": "1.94.0",
+    "size-limit": "^14.3.0",
+    "tsdown": "^0.23.7",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.1"
   },
   "publishConfig": {
     "access": "public"
   },
-  "packageManager": "pnpm@12.14.0+sha512.c18ba6d87993d3d164cb5e8948f32b2c06ee854487e06cd8d86781342fb3e5bb4634367034711e86802baa9c37bea906ce1929ad08d70884c97d801df13389a6"
+  "packageManager": "pnpm@12.21.0+sha512.66fd8278ee28935ce951792d34367ff3af5c432a2756445823029533835b8da529bbe0be5130afd56ed0713fb8789e47bad82d93bd5ae2fe54b15562d6276ef0"
 }

@@ -1,3 +1,4 @@
+// oxlint-disable-next-line typescript/consistent-type-imports -- the constants are computed keys in the FeatureMap type
 import {
   SolanaSignAndSendTransaction,
   type SolanaSignAndSendTransactionFeature,

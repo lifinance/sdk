@@ -1,4 +1,4 @@
-import { blake2b } from '@noble/hashes/blake2b'
+import { blake2b } from '@noble/hashes/blake2.js'
 import { bech32m } from '@scure/base'
 
 const ORCHARD = 0x03
@@ -74,7 +74,7 @@ export const f4JumbleInverse = (jumbled: Uint8Array): Uint8Array => {
  */
 const receiverTypecodes = (body: Uint8Array): number[] | undefined => {
   const typecodes: number[] = []
-  for (let offset = 0; offset < body.length; ) {
+  for (let offset = 0; offset < body.length;) {
     const typecode = body[offset]
     const length = RECEIVER_LENGTHS.get(typecode)
     const end = offset + 2 + (length ?? 0)

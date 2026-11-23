@@ -1,4 +1,4 @@
-import { executeRoute, type RouteExtended, resumeRoute } from '@lifi/sdk'
+import { executeRoute, resumeRoute, type RouteExtended } from '@lifi/sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { generateTestKeypair } from '../../utils/KeypairWallet.unit.helpers.js'
 import {
@@ -12,9 +12,9 @@ import {
   persist,
   RECEIVED_SWAP_AMOUNT,
   recordRoute,
-  SOLANA_EXPLORER,
   sentTransactions,
   signatureOf,
+  SOLANA_EXPLORER,
   submitTrail,
 } from './harness.mock.js'
 

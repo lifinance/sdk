@@ -3,8 +3,8 @@ import { TransactionError } from '../../errors/errors.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
 import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import {
-  type CheckBalanceOptions,
   checkBalance,
+  type CheckBalanceOptions,
 } from './helpers/checkBalance.js'
 
 export class CheckBalanceTask extends BaseStepExecutionTask {

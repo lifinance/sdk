@@ -18,12 +18,10 @@ vi.mock('../../rpc/waitForTronTxConfirmation.js', () => ({
 
 const { isFinalTransactionError, LiFiErrorCode, TransactionError } =
   await import('@lifi/sdk')
-const { withTronNodes } = await import(
-  '../../rpc/callTronRpcsWithRetry.unit.mock.js'
-)
-const { TronWaitForTransactionTask } = await import(
-  './TronWaitForTransactionTask.js'
-)
+const { withTronNodes } =
+  await import('../../rpc/callTronRpcsWithRetry.unit.mock.js')
+const { TronWaitForTransactionTask } =
+  await import('./TronWaitForTransactionTask.js')
 
 const TX_ID = 'c3e7a4c5c0b8d2f1e9a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f809102'
 const EXPIRATION = 1_790_000_060_000

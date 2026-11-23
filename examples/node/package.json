@@ -8,11 +8,11 @@
   "author": "LI.FI <github@li.finance>",
   "license": "MIT",
   "dependencies": {
-    "@lifi/data-types": "^7.1.6",
-    "@lifi/sdk": "^4.12.1",
-    "@lifi/sdk-provider-ethereum": "^4.2.11",
-    "dotenv": "^18.0.8",
-    "viem": "^2.57.7"
+    "@lifi/data-types": "^8.0.0",
+    "@lifi/sdk": "^4.13.0",
+    "@lifi/sdk-provider-ethereum": "^4.3.0",
+    "dotenv": "^18.0.10",
+    "viem": "^2.58.0"
   },
   "scripts": {
     "example:swap": "tsx examples/swap.ts",
@@ -24,9 +24,9 @@
     "example:yearn": "tsx examples/yearnDeposit.ts"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },
-  "packageManager": "pnpm@12.14.0+sha512.c18ba6d87993d3d164cb5e8948f32b2c06ee854487e06cd8d86781342fb3e5bb4634367034711e86802baa9c37bea906ce1929ad08d70884c97d801df13389a6"
+  "packageManager": "pnpm@12.21.0+sha512.66fd8278ee28935ce951792d34367ff3af5c432a2756445823029533835b8da529bbe0be5130afd56ed0713fb8789e47bad82d93bd5ae2fe54b15562d6276ef0"
 }
