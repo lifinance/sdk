@@ -837,7 +837,8 @@ export function satisfies(version, range) {
 
 // Split an override selector into the package it targets and its kind.
 //   `name`            -> whole package       (an exact value is a hold)
-//   `name@<range>`    -> old copies only     (lifts them; not a hold)
+//   `name@<range>`    -> old copies only     (lifts them; a hold only when it pins one
+//                                            exact version and has a comment)
 //   `parent>child`    -> one dependency path (reported, never a hold)
 export function parseSelector(sel) {
   // A range comparator `>` is followed by `=`, a space, a digit or `v<digit>`. Any other
@@ -1098,6 +1099,17 @@ export function overrideUpdate(o, view, minAgeMs, nowMs, isExempt) {
     if (o.kind === 'whole' && o.reason) {
       return null // a commented exact pin is a hold
     }
+    // A commented selector that pins below its own lower bound (`zod@>=4.6.6: 4.6.5`,
+    // or `zod@>4.6.5: 4.6.5`) holds the package below that bound: never propose to move it.
+    const lower = /@(>=?)\s*v?(\d+\.\d+\.\d+)$/.exec(o.key)
+    if (
+      o.kind === 'range' &&
+      o.reason &&
+      lower &&
+      cmpRaw(o.value, lower[2]) < (lower[1] === '>' ? 1 : 0)
+    ) {
+      return null
+    }
     const y = newer(o.value)
     return y
       ? {
@@ -1112,21 +1124,31 @@ export function overrideUpdate(o, view, minAgeMs, nowMs, isExempt) {
 }
 
 // lockfile-report: the two bases. `git(args)` returns stdout or throws.
-//   compareBase: --base, or the merge-base of HEAD and origin/main. Any ancestor of HEAD.
-//   trustAnchor: always the merge-base of HEAD and origin/main. Only its exclude list is
+//   compareBase: --base, or the merge-base of HEAD and the default branch. Any ancestor
+//                of HEAD.
+//   trustAnchor: always the merge-base of HEAD and the default branch (BUMP_BASE_REF, or
+//                origin/HEAD). Only its exclude list is
 //                trusted, so --base cannot widen the trusted list.
 // Throws an Error with a message for the user when either base is not usable.
 export function resolveLockfileBases(baseOpt, git) {
+  // bump.mjs sets BUMP_BASE_REF. A direct run reads origin/HEAD.
+  let main = process.env.BUMP_BASE_REF
+  if (!main) {
+    try {
+      main = git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']).trim()
+    } catch {}
+  }
+  main ||= 'origin/main'
   let trustAnchor
   try {
-    trustAnchor = git(['merge-base', 'HEAD', 'origin/main']).trim()
+    trustAnchor = git(['merge-base', 'HEAD', main]).trim()
   } catch {
     throw new Error(
-      'Cannot find the merge-base of HEAD and origin/main (the trust anchor). Run git fetch --no-prune-tags origin, then run again.'
+      `Cannot find the merge-base of HEAD and ${main} (the trust anchor). Run git fetch --no-prune-tags origin, then run again.`
     )
   }
   if (!trustAnchor) {
-    throw new Error('The merge-base of HEAD and origin/main is empty.')
+    throw new Error(`The merge-base of HEAD and ${main} is empty.`)
   }
   const compareBase = baseOpt || trustAnchor
   try {

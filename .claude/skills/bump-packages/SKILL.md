@@ -4,8 +4,8 @@ description: >-
   Use when the user types /bump-packages or says "bump packages", "bump deps", "update
   dependencies", "upgrade everything to latest", "refresh the lockfile and actions", "bump
   pnpm", or "what is outdated", or asks for the routine dependency bump (npm dependencies,
-  GitHub Actions, CI tool versions, pnpm) in sdk, widget, or jumper-widget, also for more
-  than one repo at a time. Do not use it to upgrade or debug one named package, to bump a
+  GitHub Actions, CI tool versions, pnpm) in sdk, widget, jumper-widget, or jumper-frontend,
+  also for more than one repo at a time. Do not use it to upgrade or debug one named package, to bump a
   package version for a release, to write a changeset by itself, or to review an existing
   bump PR.
 ---
@@ -28,7 +28,8 @@ node "$SKILL/scripts/bump.mjs" --repo "$REPO" --dry-run   # "what is outdated": 
   use subagents. Give one merged report.
 
 The script works in a worktree under `$REPO/.claude/worktrees/`. It starts from the latest
-`origin/main`, or it continues the open "chore: bump packages" PR of this machine. It applies
+default branch (`origin/HEAD`: `main`, or `develop` in jumper-frontend), or it continues the
+open "chore: bump packages" PR of this machine. In this file, `main` means the default branch. It applies
 what is safe without a question: aged patch and minor bumps, fresh releases that pass the
 security checks (`references/fast-track.md`), override floors, safe GitHub Actions and CI
 tools, and pnpm. It regenerates the lockfile once and reviews it. It runs the checks once.
@@ -126,13 +127,14 @@ mention users.
 - **The release-age gate stays on.** Never install with `--config.minimum-release-age=0`.
   The only way past the gate is an exact `name@version` entry that the script decided, or
   that the user approved by name.
-- **The script only runs code from `origin/main` or from this machine.** If it refuses
+- **The script only runs code from the default branch or from this machine.** If it refuses
   remote commits on the PR branch, show them to the user first. Do not pull them yourself.
 - **Your own commits** in the worktree use `--no-verify` and name their files. The next run
   of the script runs the checks. Never rebase or force-push, and never work in the main
   checkout.
-- **Same skill in three repos** (`lifinance/sdk`, `lifinance/widget`,
-  `jumperexchange/jumper-widget`). If you fix it, copy the fix to the other two, and run
-  `node --test "$SKILL"/scripts/test/*.test.mjs`.
+- **Same skill in four repos** (`lifinance/sdk`, `lifinance/widget`,
+  `jumperexchange/jumper-widget`, `jumperexchange/jumper-frontend`). If you fix it, copy the
+  fix to the other three, and run `node --test "$SKILL"/scripts/test/*.test.mjs` (with
+  `BUMP_E2E=1` for the end-to-end tests).
 - Old bump worktrees whose PRs are merged can stay. List them for the user. Do not remove
   them.

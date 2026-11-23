@@ -12,6 +12,7 @@ import {
   DATE,
   fixture,
   ghCalls,
+  HEADS,
   isAncestor,
   LIST,
   lockAt,
@@ -107,7 +108,7 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       assert.equal(r.json.message, 'nothing to bump')
       assert.deepEqual(r.json.commits, [])
       assert.equal(originRef(fx, BRANCH), prHead, 'nothing pushed')
-      assert.deepEqual(ghCalls(fx).slice(calls), [LIST])
+      assert.deepEqual(ghCalls(fx).slice(calls), [LIST, HEADS(BRANCH)])
       // A9: nothing changed after the regeneration: no review, checks or audit.
       assert.deepEqual(Object.keys(r.json.timings), [
         'git',
@@ -175,7 +176,7 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       const edits = ghCalls(fx).slice(calls)
       assert.deepEqual(
         edits.map((c) => c.split(' ').slice(0, 2).join(' ')),
-        ['list --repo', 'view 10', 'edit 10']
+        ['list --repo', 'list --repo', 'view 10', 'edit 10']
       )
       // F4: one generated block, replaced (not appended).
       const body = readJson(fx.state).prs[0].body
@@ -230,7 +231,7 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       assert.deepEqual(r.json.commits, [])
       assert.equal(fx.git(wt, 'rev-parse', 'HEAD'), head, 'nothing committed')
       assert.equal(originRef(fx, BRANCH), prHead, 'nothing pushed')
-      assert.deepEqual(ghCalls(fx).slice(calls), [LIST])
+      assert.deepEqual(ghCalls(fx).slice(calls), [LIST, HEADS(BRANCH)])
       // The approval: reset as the summary says, run again with --majors.
       fx.git(wt, 'reset', '-q', '--hard', 'HEAD')
       fx.git(wt, 'clean', '-qfd', '--', '.changeset')
@@ -281,6 +282,7 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
     const pr = (number, headRefName, extra = {}) => ({
       ...{ number, state: 'OPEN', title: 'chore: bump packages', body: '' },
       headRefName,
+      baseRefName: 'main',
       isCrossRepository: false,
       headRepositoryOwner: { login: 'acme' },
       ...extra,

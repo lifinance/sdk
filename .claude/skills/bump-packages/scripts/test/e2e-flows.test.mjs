@@ -222,6 +222,7 @@ describe('bump.mjs flows', { skip, concurrency: true }, () => {
       state: 'OPEN',
       title: 'chore: bump packages',
       headRefName: 'chore/bump-deps-20261101',
+      baseRefName: 'main',
       isCrossRepository: false,
       headRepositoryOwner: { login: 'acme' },
       body: '',
