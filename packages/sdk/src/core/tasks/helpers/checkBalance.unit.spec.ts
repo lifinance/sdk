@@ -282,6 +282,15 @@ describe('checkBalance — no step slippage', () => {
     expect(step.action.fromAmount).toBe('1000000')
   })
 
+  it('does not trim the amount to dust with a slippage of 1', async () => {
+    const step = buildStep({ slippage: 1, fromAmount: '1000000' })
+    const { client } = buildClient(usdc(1n))
+    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+      message: 'The balance is too low.',
+    })
+    expect(step.action.fromAmount).toBe('1000000')
+  })
+
   it('does not trim the amount to 0 with a slippage of 1', async () => {
     const step = buildStep({ slippage: 1, fromAmount: '1000000' })
     const { client } = buildClient(usdc(0n))

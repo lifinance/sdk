@@ -131,10 +131,11 @@ export const checkBalance = async (
   const reqs = Array.from(requirements.values())
   const tokens = reqs.map((r) => r.token)
   const rawSlippage = step.action.slippage ?? DEFAULT_SLIPPAGE_THRESHOLD
-  // A slippage outside [0, 1] would let the rescue trim below the overhead
-  // reserve; a non-number would make `BigInt` throw. Treat both as no slippage.
+  // A slippage outside [0, 1) would let the rescue trim below the overhead
+  // reserve, or down to dust at 1; a non-number would make `BigInt` throw.
+  // Treat all of them as no slippage.
   const slippage =
-    Number.isFinite(rawSlippage) && rawSlippage >= 0 && rawSlippage <= 1
+    Number.isFinite(rawSlippage) && rawSlippage >= 0 && rawSlippage < 1
       ? rawSlippage
       : 0
   const slippageScaled = BigInt(
