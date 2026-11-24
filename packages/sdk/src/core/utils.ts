@@ -1,8 +1,9 @@
 import type { ChainId, ExtendedChain, LiFiStep } from '@lifi/types'
 import type { RPCUrls } from '../types/core.js'
 
-// Standard threshold for destination amount difference (0.5%)
-const standardThreshold = 0.005
+// Standard threshold for destination amount difference (0.5%). It is also the
+// API's default slippage, which steps quoted on Auto slippage do not carry.
+export const DEFAULT_SLIPPAGE_THRESHOLD = 0.005
 
 /**
  * Used to check if changed exchange rate is in the range of slippage threshold.
@@ -16,7 +17,7 @@ export function checkStepSlippageThreshold(
   oldStep: LiFiStep,
   newStep: LiFiStep
 ): boolean {
-  const setSlippage = oldStep.action.slippage || standardThreshold
+  const setSlippage = oldStep.action.slippage || DEFAULT_SLIPPAGE_THRESHOLD
   const oldEstimatedToAmount = BigInt(oldStep.estimate.toAmountMin)
   const newEstimatedToAmount = BigInt(newStep.estimate.toAmountMin)
   const amountDifference = oldEstimatedToAmount - newEstimatedToAmount

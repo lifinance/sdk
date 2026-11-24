@@ -189,6 +189,69 @@ describe('checkBalance — source token', () => {
   })
 })
 
+describe('checkBalance — no step slippage', () => {
+  const usdc = (amount: bigint) =>
+    Array(6).fill({ [USDC.address.toLowerCase()]: amount })
+
+  it('rescues a 0.014% gap with the 0.5% fallback', async () => {
+    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
+    const { client } = buildClient(usdc(999_860n))
+    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
+    expect(step.action.fromAmount).toBe('999860')
+    expect(step.action.slippage).toBeUndefined()
+  })
+
+  it('rescues a gap of exactly 0.5%', async () => {
+    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
+    const { client } = buildClient(usdc(995_000n))
+    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
+    expect(step.action.fromAmount).toBe('995000')
+  })
+
+  it('throws on a 0.6% gap', async () => {
+    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
+    const { client } = buildClient(usdc(994_000n))
+    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'The balance is too low.',
+    })
+    expect(step.action.fromAmount).toBe('1000000')
+  })
+
+  it('treats a null slippage as missing', async () => {
+    const step = buildStep({ slippage: null as unknown as number })
+    const { client } = buildClient(usdc(999_860n))
+    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
+    expect(step.action.fromAmount).toBe('999860')
+  })
+
+  it('keeps an explicit slippage of 0', async () => {
+    const step = buildStep({ slippage: 0 })
+    const { client } = buildClient(usdc(999_860n))
+    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+      message: 'The balance is too low.',
+    })
+  })
+
+  it('ignores routeOptions.slippage', async () => {
+    const step = buildStep({ slippage: undefined })
+    const { client } = buildClient(usdc(994_000n))
+    ;(client as { config?: unknown }).config = {
+      routeOptions: { slippage: 0.03 },
+    }
+    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+      message: 'The balance is too low.',
+    })
+  })
+
+  it('rescues when routeOptions.slippage is 0', async () => {
+    const step = buildStep({ slippage: undefined })
+    const { client } = buildClient(usdc(999_860n))
+    ;(client as { config?: unknown }).config = { routeOptions: { slippage: 0 } }
+    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
+  })
+})
+
 describe('checkBalance — overhead tokens', () => {
   it('verifies native gas balance when source token != native', async () => {
     const step = buildStep()

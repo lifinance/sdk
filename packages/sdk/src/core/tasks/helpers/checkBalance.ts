@@ -4,6 +4,7 @@ import type { SDKClient } from '../../../types/core.js'
 import { formatUnits } from '../../../utils/formatUnits.js'
 import { sleep } from '../../../utils/sleep.js'
 import { withTimeout } from '../../../utils/withTimeout.js'
+import { DEFAULT_SLIPPAGE_THRESHOLD } from '../../utils.js'
 
 const MAX_ATTEMPTS = 6
 // Exponential backoff: 150, 300, 600, 1200, 2400 → ≈4.65s of sleep total.
@@ -38,6 +39,10 @@ export type CheckBalanceOptions = {
  * call, retries within a bounded budget to absorb transient RPC failures and
  * post-confirmation propagation lag, and applies slippage to the source-token
  * portion only as a last resort (overhead is never trimmed).
+ *
+ * A step quoted on Auto slippage has no `action.slippage`. The rescue then
+ * allows `DEFAULT_SLIPPAGE_THRESHOLD` (0.5%), the API's default. The fallback
+ * is only used here; it is never written into the step.
  *
  * Throws BalanceError("The balance is too low.") on a genuine shortfall, or
  * BalanceError("Could not read wallet balance.") if the balance can't be read
@@ -113,7 +118,7 @@ export const checkBalance = async (
 
   const reqs = Array.from(requirements.values())
   const tokens = reqs.map((r) => r.token)
-  const slippage = step.action.slippage ?? 0
+  const slippage = step.action.slippage ?? DEFAULT_SLIPPAGE_THRESHOLD
   const slippageScaled = BigInt(
     Math.floor((1 - slippage) * Number(SLIPPAGE_PRECISION))
   )
