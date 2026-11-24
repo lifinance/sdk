@@ -8,6 +8,7 @@ import { getAccountCode } from '../../actions/getAccountCode.js'
 import { isSmartContractWalletCode } from '../../actions/isSmartContractWallet.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { isPermit2AllowanceLane } from '../../utils/getTypedDataLane.js'
+import { isContractCallStep } from '../../utils/isContractCallStep.js'
 import { findSignedNativePermit } from './helpers/findSignedNativePermit.js'
 
 /**
@@ -27,9 +28,13 @@ export class EthereumCheckBalanceTask extends CheckBalanceTask {
     // The native permit task signs before this check, for the exact amount,
     // and the permit proxy pulls that same amount. A trimmed amount would
     // revert on chain, so a shortfall must fail here instead.
-    return findSignedNativePermit(context)
-      ? { ...options, allowAmountTrim: false }
-      : options
+    // Contract calls are built for the quoted output. A step without slippage
+    // was never trimmed before the default-slippage fallback, so keep it so.
+    const { step } = context
+    const keepAmount =
+      !!findSignedNativePermit(context) ||
+      (isContractCallStep(step) && step.action.slippage == null)
+    return keepAmount ? { ...options, allowAmountTrim: false } : options
   }
 
   private async getGasOptions(

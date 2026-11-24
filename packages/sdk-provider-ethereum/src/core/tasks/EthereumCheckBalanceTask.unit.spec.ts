@@ -24,6 +24,8 @@ const buildStep = (overrides?: {
   fromAddress?: string | undefined
   fromChainId?: number
   typedData?: unknown
+  slippage?: number
+  includedSteps?: unknown[]
 }): LiFiStep =>
   ({
     type: 'lifi',
@@ -35,8 +37,10 @@ const buildStep = (overrides?: {
         'fromAddress' in (overrides ?? {})
           ? overrides!.fromAddress
           : FROM_ADDRESS,
+      slippage: overrides?.slippage,
     },
     estimate: { gasCosts: [], feeCosts: [] },
+    includedSteps: overrides?.includedSteps ?? [],
     ...(overrides?.typedData !== undefined
       ? { typedData: overrides.typedData }
       : {}),
@@ -140,6 +144,26 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
     expect(
       await task.exposed(buildContext(buildStep(), [signedNativePermit]))
     ).toEqual({ walletPaysGas: true, allowAmountTrim: false })
+  })
+
+  it('a contract-call step without slippage forbids the trim', async () => {
+    vi.mocked(getAccountCode).mockResolvedValue('0x')
+    const step = buildStep({ includedSteps: [{ type: 'custom' }] })
+    expect(await task.exposed(buildContext(step))).toEqual({
+      walletPaysGas: true,
+      allowAmountTrim: false,
+    })
+  })
+
+  it('a contract-call step with a set slippage keeps the trim', async () => {
+    vi.mocked(getAccountCode).mockResolvedValue('0x')
+    const step = buildStep({
+      slippage: 0.005,
+      includedSteps: [{ type: 'custom' }],
+    })
+    expect(await task.exposed(buildContext(step))).toEqual({
+      walletPaysGas: true,
+    })
   })
 
   it('native-permit-only step keeps the historical skip without reading account code', async () => {
