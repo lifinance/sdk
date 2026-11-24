@@ -35,7 +35,9 @@ export type CheckBalanceOptions = {
   /**
    * Set to `false` when something already signed for the exact source amount
    * (an EIP-2612 permit): a lower amount would not match the signature, so a
-   * shortfall throws instead of trimming `fromAmount`. Defaults to `true`.
+   * shortfall throws instead of trimming `fromAmount`. Also set it when the
+   * step's calls are built for the quoted output (a contract-call step).
+   * Defaults to `true`.
    */
   allowAmountTrim?: boolean
 }
