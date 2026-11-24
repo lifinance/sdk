@@ -244,6 +244,44 @@ describe('checkBalance — no step slippage', () => {
     })
   })
 
+  it('drops the quoted transaction request when it trims the amount', async () => {
+    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
+    step.transactionRequest = { data: '0xquoted' }
+    const { client } = buildClient(usdc(999_860n))
+    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
+    expect(step.action.fromAmount).toBe('999860')
+    expect(step.transactionRequest).toBeUndefined()
+  })
+
+  it('keeps the transaction request when the balance covers the amount', async () => {
+    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
+    step.transactionRequest = { data: '0xquoted' }
+    const { client } = buildClient(usdc(1_000_000n))
+    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
+    expect(step.transactionRequest).toEqual({ data: '0xquoted' })
+  })
+
+  it.each([
+    ['above 1', 1.5],
+    ['NaN', Number.NaN],
+  ])('does not trim with a slippage that is %s', async (_, slippage) => {
+    const step = buildStep({ slippage, fromAmount: '1000000' })
+    const { client } = buildClient(usdc(999_860n))
+    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+      message: 'The balance is too low.',
+    })
+    expect(step.action.fromAmount).toBe('1000000')
+  })
+
+  it('does not trim the amount to 0 with a slippage of 1', async () => {
+    const step = buildStep({ slippage: 1, fromAmount: '1000000' })
+    const { client } = buildClient(usdc(0n))
+    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+      message: 'The balance is too low.',
+    })
+    expect(step.action.fromAmount).toBe('1000000')
+  })
+
   it('rescues when routeOptions.slippage is 0', async () => {
     const step = buildStep({ slippage: undefined })
     const { client } = buildClient(usdc(999_860n))
@@ -750,7 +788,18 @@ describe('checkBalance — overall timeout', () => {
         )
     )
 
+  // Fake timers, with a backoff sleep that takes its real time on them, so
+  // the time-limit tests count the backoff like production does.
+  const useFakeClock = () => {
+    vi.useFakeTimers()
+    vi.mocked(sleep).mockImplementation(
+      (ms: number) =>
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))
+    )
+  }
+
   afterEach(() => {
+    vi.mocked(sleep).mockImplementation(() => Promise.resolve(null))
     vi.useRealTimers()
   })
 
@@ -774,7 +823,7 @@ describe('checkBalance — overall timeout', () => {
   })
 
   it('rescues before the time limit when each read takes 4 s', async () => {
-    vi.useFakeTimers()
+    useFakeClock()
     const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
     const { client, getBalance } = buildClient([])
     readsTaking(getBalance, 4_000, 996_000n)
@@ -788,7 +837,7 @@ describe('checkBalance — overall timeout', () => {
   })
 
   it('reports the real shortfall when each read takes 4 s', async () => {
-    vi.useFakeTimers()
+    useFakeClock()
     const { client, getBalance } = buildClient([])
     readsTaking(getBalance, 4_000, 980_000n)
     const checked = expect(
@@ -805,23 +854,24 @@ describe('checkBalance — overall timeout', () => {
   })
 
   it('does not start a backoff that ends after the time limit', async () => {
-    vi.useFakeTimers()
+    useFakeClock()
     const { client, getBalance } = buildClient([])
-    readsTaking(getBalance, 7_450, 980_000n)
+    readsTaking(getBalance, 7_300, 980_000n)
     const checked = expect(
       checkBalance(client, WALLET, buildStep())
     ).rejects.toMatchObject({
       message: 'The balance is too low.',
     })
-    // Read 2 ends at 14.9 s. The next backoff (300 ms) would end after 15 s.
-    await vi.advanceTimersByTimeAsync(14_900)
+    // Read 1 ends at 7.3 s and the backoff at 7.45 s. Read 2 ends at 14.75 s.
+    // The next backoff (300 ms) would end after 15 s.
+    await vi.advanceTimersByTimeAsync(14_750)
     await checked
     expect(getBalance).toHaveBeenCalledTimes(2)
     expect(vi.mocked(sleep)).toHaveBeenCalledTimes(1)
   })
 
   it('throws "Could not read wallet balance" with a cause when no read finishes in time', async () => {
-    vi.useFakeTimers()
+    useFakeClock()
     const { client, getBalance } = buildClient([])
     getBalance.mockImplementation(() => new Promise<TokenAmount[]>(() => {}))
     const checked = expect(
@@ -837,7 +887,7 @@ describe('checkBalance — overall timeout', () => {
   })
 
   it('decides from the last good read when the final read hangs, and ignores the late read', async () => {
-    vi.useFakeTimers()
+    useFakeClock()
     const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
     const { client, getBalance } = buildClient([])
     const balanceOf =

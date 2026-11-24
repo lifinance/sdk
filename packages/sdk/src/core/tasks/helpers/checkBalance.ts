@@ -124,7 +124,13 @@ export const checkBalance = async (
 
   const reqs = Array.from(requirements.values())
   const tokens = reqs.map((r) => r.token)
-  const slippage = step.action.slippage ?? DEFAULT_SLIPPAGE_THRESHOLD
+  const rawSlippage = step.action.slippage ?? DEFAULT_SLIPPAGE_THRESHOLD
+  // A slippage outside [0, 1] would let the rescue trim below the overhead
+  // reserve; a non-number would make `BigInt` throw. Treat both as no slippage.
+  const slippage =
+    Number.isFinite(rawSlippage) && rawSlippage >= 0 && rawSlippage <= 1
+      ? rawSlippage
+      : 0
   const slippageScaled = BigInt(
     Math.floor((1 - slippage) * Number(SLIPPAGE_PRECISION))
   )
@@ -213,12 +219,15 @@ export const checkBalance = async (
     const reserved = reservedOverhead(req)
     const minAcceptable =
       (req.sourcePart * slippageScaled) / SLIPPAGE_PRECISION + reserved
-    if (have >= minAcceptable) {
+    if (have >= minAcceptable && have > reserved) {
       const newFromAmount = (have - reserved).toString()
       step.action.fromAmount = newFromAmount
       if (step.includedSteps?.length) {
         step.includedSteps[0].action.fromAmount = newFromAmount
       }
+      // A quote carries a transaction request built for the old amount.
+      // Drop it so the prepare task fetches one for the trimmed amount.
+      step.transactionRequest = undefined
       return
     }
   }
