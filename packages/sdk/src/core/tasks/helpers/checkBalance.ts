@@ -32,6 +32,12 @@ export type CheckBalanceOptions = {
    * verified. Defaults to `true` (strict, today's behavior).
    */
   walletPaysGas?: boolean
+  /**
+   * Set to `false` when something already signed for the exact source amount
+   * (an EIP-2612 permit): a lower amount would not match the signature, so a
+   * shortfall throws instead of trimming `fromAmount`. Defaults to `true`.
+   */
+  allowAmountTrim?: boolean
 }
 
 /**
@@ -214,7 +220,11 @@ export const checkBalance = async (
   // Slippage rescue: only when the sole shortfall is the source-token
   // portion. Trim source to (balance − reserved overhead) so the overhead
   // reserve is preserved.
-  if (lastShortfall.length === 1 && lastShortfall[0].req.sourcePart > 0n) {
+  if (
+    options.allowAmountTrim !== false &&
+    lastShortfall.length === 1 &&
+    lastShortfall[0].req.sourcePart > 0n
+  ) {
     const { req, have } = lastShortfall[0]
     const reserved = reservedOverhead(req)
     const minAcceptable =

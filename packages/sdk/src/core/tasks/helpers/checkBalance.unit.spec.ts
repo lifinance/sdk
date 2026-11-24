@@ -244,6 +244,15 @@ describe('checkBalance — no step slippage', () => {
     })
   })
 
+  it('does not trim when the options forbid it', async () => {
+    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
+    const { client } = buildClient(usdc(999_860n))
+    await expect(
+      checkBalance(client, WALLET, step, { allowAmountTrim: false })
+    ).rejects.toMatchObject({ message: 'The balance is too low.' })
+    expect(step.action.fromAmount).toBe('1000000')
+  })
+
   it('drops the quoted transaction request when it trims the amount', async () => {
     const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
     step.transactionRequest = { data: '0xquoted' }

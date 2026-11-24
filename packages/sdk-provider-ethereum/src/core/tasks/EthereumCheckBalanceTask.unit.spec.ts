@@ -1,4 +1,4 @@
-import type { LiFiStep } from '@lifi/sdk'
+import type { LiFiStep, SignedTypedData } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -42,7 +42,10 @@ const buildStep = (overrides?: {
       : {}),
   }) as unknown as LiFiStep
 
-const buildContext = (step: LiFiStep): EthereumStepExecutorContext =>
+const buildContext = (
+  step: LiFiStep,
+  signedTypedData: SignedTypedData[] = []
+): EthereumStepExecutorContext =>
   ({
     client: {} as any,
     step,
@@ -50,7 +53,17 @@ const buildContext = (step: LiFiStep): EthereumStepExecutorContext =>
       id: SOURCE_CHAIN,
       permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
     },
+    signedTypedData,
   }) as unknown as EthereumStepExecutorContext
+
+// The native permit task signs this before the balance check runs.
+const signedNativePermit = {
+  primaryType: 'Permit',
+  domain: { chainId: SOURCE_CHAIN },
+  types: {},
+  message: { owner: FROM_ADDRESS, value: '1000000' },
+  signature: `0x${'11'.repeat(65)}`,
+} as unknown as SignedTypedData
 
 const task = new TestableEthereumCheckBalanceTask()
 
@@ -120,6 +133,13 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
       walletPaysGas: true,
     })
     expect(getAccountCode).toHaveBeenCalled()
+  })
+
+  it('a signed native permit forbids trimming the amount that it covers', async () => {
+    vi.mocked(getAccountCode).mockResolvedValue('0x')
+    expect(
+      await task.exposed(buildContext(buildStep(), [signedNativePermit]))
+    ).toEqual({ walletPaysGas: true, allowAmountTrim: false })
   })
 
   it('native-permit-only step keeps the historical skip without reading account code', async () => {

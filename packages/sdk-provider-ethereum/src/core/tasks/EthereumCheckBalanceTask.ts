@@ -8,6 +8,7 @@ import { getAccountCode } from '../../actions/getAccountCode.js'
 import { isSmartContractWalletCode } from '../../actions/isSmartContractWallet.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { isPermit2AllowanceLane } from '../../utils/getTypedDataLane.js'
+import { findSignedNativePermit } from './helpers/findSignedNativePermit.js'
 
 /**
  * Skips the outer-tx gas check for steps where the wallet doesn't fund it:
@@ -20,6 +21,18 @@ import { isPermit2AllowanceLane } from '../../utils/getTypedDataLane.js'
  */
 export class EthereumCheckBalanceTask extends CheckBalanceTask {
   protected override async getCheckBalanceOptions(
+    context: EthereumStepExecutorContext
+  ): Promise<CheckBalanceOptions> {
+    const options = await this.getGasOptions(context)
+    // The native permit task signs before this check, for the exact amount,
+    // and the permit proxy pulls that same amount. A trimmed amount would
+    // revert on chain, so a shortfall must fail here instead.
+    return findSignedNativePermit(context)
+      ? { ...options, allowAmountTrim: false }
+      : options
+  }
+
+  private async getGasOptions(
     context: EthereumStepExecutorContext
   ): Promise<CheckBalanceOptions> {
     const { client, step, fromChain } = context
