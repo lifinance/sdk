@@ -798,6 +798,35 @@ async function main() {
       })
       continue
     }
+    // A range selector that pins one exact version and gives a reason
+    // (`zod@>=4.6.6: 4.6.5`) is a hold too: a bump into that range resolves to the pin.
+    const rangePins = overrides.filter(
+      (o) =>
+        o.name === name &&
+        o.kind === 'range' &&
+        isVersionLike(o.value) &&
+        o.reason
+    )
+    const rangeTarget = rangePins.length ? agedTarget(info.current) : null
+    // The override turns a bump into its range back into the pin, unless the pin is
+    // the target itself. More than one selector can name the package.
+    const rangeHold = rangeTarget
+      ? rangePins.find(
+          (o) =>
+            o.value !== rangeTarget &&
+            satisfies(rangeTarget, o.key.slice(o.key.lastIndexOf('@') + 1)) ===
+              true
+        )
+      : null
+    if (rangeHold) {
+      held.push({
+        ...base,
+        target: rangeTarget,
+        heldBy: `override ${rangeHold.key}: ${rangeHold.value}`,
+        reason: rangeHold.reason,
+      })
+      continue
+    }
     if (registryLatest && cmpRaw(info.current, registryLatest) > 0) {
       // Above the `latest` dist-tag (a prerelease, or `latest` moved back): no upgrade.
       held.push({

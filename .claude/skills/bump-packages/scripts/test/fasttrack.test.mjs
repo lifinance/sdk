@@ -752,6 +752,80 @@ test('resolveLockfileBases: any ancestor of HEAD compares; the trust anchor stay
   )
 })
 
+test('overrideUpdate: a commented exact pin below its own lower bound is a hold; a forced major is not', () => {
+  const exempt = () => false
+  const up = (o, v) => overrideUpdate(o, v, GATE, NOW, exempt)
+  const zod = view({ '4.6.5': 900, '4.6.6': 500, '4.6.7': 300 })
+  assert.equal(
+    up(
+      {
+        key: 'zod@>=4.6.6',
+        value: '4.6.5',
+        name: 'zod',
+        kind: 'range',
+        reason: '4.6.6+ breaks a check',
+      },
+      zod
+    ),
+    null
+  )
+  // An exclusive bound: a pin equal to it is below the range too.
+  assert.equal(
+    up(
+      {
+        key: 'zod@>4.6.5',
+        value: '4.6.5',
+        name: 'zod',
+        kind: 'range',
+        reason: '4.6.6+ breaks a check',
+      },
+      zod
+    ),
+    null
+  )
+  const pb = view({ '4.0.3': 900, '4.0.5': 300 })
+  assert.equal(
+    up(
+      {
+        key: 'google-protobuf@3',
+        value: '4.0.3',
+        name: 'google-protobuf',
+        kind: 'range',
+        reason: 'Forced major',
+      },
+      pb
+    )?.newValue,
+    '4.0.5'
+  )
+})
+
+test('resolveLockfileBases: without BUMP_BASE_REF, the trust anchor follows origin/HEAD', () => {
+  const saved = process.env.BUMP_BASE_REF
+  delete process.env.BUMP_BASE_REF
+  try {
+    const git = (args) => {
+      if (args.join(' ') === 'symbolic-ref --short refs/remotes/origin/HEAD') {
+        return 'origin/develop\n'
+      }
+      if (args.join(' ') === 'merge-base HEAD origin/develop') {
+        return 'dddd\n'
+      }
+      if (args.join(' ') === 'merge-base --is-ancestor dddd HEAD') {
+        return ''
+      }
+      throw new Error(`unexpected git ${args.join(' ')}`)
+    }
+    assert.deepEqual(resolveLockfileBases(undefined, git), {
+      compareBase: 'dddd',
+      trustAnchor: 'dddd',
+    })
+  } finally {
+    if (saved !== undefined) {
+      process.env.BUMP_BASE_REF = saved
+    }
+  }
+})
+
 test('overrideUpdate: a hold comment stops every kind; a commented exact pin is a hold; tilde stays in its minor', () => {
   const exempt = () => false
   const up = (o, v) => overrideUpdate(o, v, GATE, NOW, exempt)
