@@ -9,7 +9,7 @@ import { DEFAULT_SLIPPAGE_THRESHOLD } from '../../utils.js'
 const MAX_ATTEMPTS = 6
 // Exponential backoff: 150, 300, 600, 1200, 2400 → ≈4.65s of sleep total.
 const BACKOFF_BASE_MS = 150
-const OVERALL_TIMEOUT_MS = 10_000
+const OVERALL_TIMEOUT_MS = 15_000
 const SLIPPAGE_PRECISION = 1_000_000_000n
 
 type Bucket = 'source' | 'gas' | 'fee'
@@ -20,6 +20,8 @@ type Requirement = {
   gasPart: bigint // step.estimate.gasCosts in this token
   feePart: bigint // non-included step.estimate.feeCosts in this token
 }
+
+type Shortfall = { req: Requirement; have: bigint }[]
 
 export type CheckBalanceOptions = {
   /**
@@ -44,9 +46,13 @@ export type CheckBalanceOptions = {
  * allows `DEFAULT_SLIPPAGE_THRESHOLD` (0.5%), the API's default. The fallback
  * is only used here; it is never written into the step.
  *
- * Throws BalanceError("The balance is too low.") on a genuine shortfall, or
- * BalanceError("Could not read wallet balance.") if the balance can't be read
- * after retries.
+ * Reads retry with backoff for up to `OVERALL_TIMEOUT_MS` (15 s), and each
+ * read races the time that is left. When the attempts or the time run out,
+ * the check decides from the latest read in which every balance was known:
+ * it rescues the source amount within slippage, or throws
+ * BalanceError("The balance is too low.") with the real numbers. It throws
+ * BalanceError("Could not read wallet balance.") only when no such read
+ * succeeded, with the last read error as the cause.
  */
 export const checkBalance = async (
   client: SDKClient,
@@ -123,39 +129,44 @@ export const checkBalance = async (
     Math.floor((1 - slippage) * Number(SLIPPAGE_PRECISION))
   )
 
-  // Aborted once `withTimeout` settles. A timeout rejects at once, but the
-  // loop keeps running; the signal stops it before it can change `step`.
+  // Passed to every backoff sleep and aborted once the check settles, so no
+  // sleep outlives the check.
   const controller = new AbortController()
   const { signal } = controller
+  const deadline = Date.now() + OVERALL_TIMEOUT_MS
 
-  await withTimeout(
-    async () => {
-      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-        const isFinal = attempt === MAX_ATTEMPTS - 1
+  // The shortfall of the latest read in which every balance was known, and
+  // the reason the latest other read failed. A read that is still pending
+  // when the check settles is never awaited, so it cannot change `step`.
+  let lastShortfall: Shortfall | undefined
+  let lastFailure: Error | undefined
 
-        let balances: TokenAmount[]
-        try {
-          balances = await provider.getBalance(client, walletAddress, tokens)
-        } catch (error) {
-          if (isFinal) {
-            throw new BalanceError(
-              'Could not read wallet balance.',
-              error as Error
-            )
+  try {
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const remaining = deadline - Date.now()
+      if (remaining <= 0) {
+        break
+      }
+
+      let balances: TokenAmount[] | undefined
+      try {
+        balances = await withTimeout(
+          () => provider.getBalance(client, walletAddress, tokens),
+          {
+            timeout: remaining,
+            errorInstance: new Error('Balance read timed out.'),
           }
-          await sleep(BACKOFF_BASE_MS * 2 ** attempt, { signal })
-          continue
-        }
-        if (signal.aborted) {
-          return
-        }
+        )
+      } catch (error) {
+        lastFailure = error as Error
+      }
 
+      if (balances) {
         const balanceByAddress = new Map(
           balances.map((b) => [b.address.toLowerCase(), b.amount] as const)
         )
-
         const unknown: Token[] = []
-        const insufficient: { req: Requirement; have: bigint }[] = []
+        const insufficient: Shortfall = []
         for (const req of reqs) {
           const have = balanceByAddress.get(req.token.address.toLowerCase())
           if (have === undefined) {
@@ -168,64 +179,63 @@ export const checkBalance = async (
         if (unknown.length === 0 && insufficient.length === 0) {
           return
         }
-
-        // Final-attempt slippage rescue: only when the sole shortfall is
-        // the source-token portion. Trim source to (balance − reserved
-        // overhead) so the overhead reserve is preserved.
-        if (
-          isFinal &&
-          unknown.length === 0 &&
-          insufficient.length === 1 &&
-          insufficient[0].req.sourcePart > 0n
-        ) {
-          const { req, have } = insufficient[0]
-          const reserved = reservedOverhead(req)
-          const minAcceptable =
-            (req.sourcePart * slippageScaled) / SLIPPAGE_PRECISION + reserved
-          if (have >= minAcceptable) {
-            const newFromAmount = (have - reserved).toString()
-            step.action.fromAmount = newFromAmount
-            if (step.includedSteps?.length) {
-              step.includedSteps[0].action.fromAmount = newFromAmount
-            }
-            return
-          }
-        }
-
-        if (isFinal) {
-          if (unknown.length > 0) {
-            throw new BalanceError(
-              'Could not read wallet balance.',
-              new Error(
-                `Could not read balance for: ${unknown
-                  .map((t) => t.symbol || t.address)
-                  .join(', ')}.`
-              )
-            )
-          }
-          const lines = insufficient.map(({ req, have }) => {
-            const needed = formatUnits(need(req), req.token.decimals)
-            const current = formatUnits(have, req.token.decimals)
-            const symbol = req.token.symbol
-            // The "fees" branch covers pure-overhead tokens; with
-            // walletPaysGas=false, gas is excluded from `need(req)` so it
-            // only fires for genuine fee shortfalls.
-            return req.sourcePart > 0n
-              ? `Your ${symbol} balance is too low, you try to transfer ${needed} ${symbol}, but your wallet only holds ${current} ${symbol}.`
-              : `Insufficient ${symbol} for fees: need ${needed} ${symbol}, have ${current} ${symbol}.`
-          })
-          throw new BalanceError(
-            'The balance is too low.',
-            new Error(`${lines.join(' ')} No funds have been sent.`)
+        if (unknown.length > 0) {
+          lastFailure = new Error(
+            `Could not read balance for: ${unknown
+              .map((t) => t.symbol || t.address)
+              .join(', ')}.`
           )
+        } else {
+          lastShortfall = insufficient
         }
-
-        await sleep(BACKOFF_BASE_MS * 2 ** attempt, { signal })
       }
-    },
-    {
-      timeout: OVERALL_TIMEOUT_MS,
-      errorInstance: new BalanceError('Could not read wallet balance.'),
+
+      // Decide now rather than start a backoff that ends after the deadline.
+      const backoff = BACKOFF_BASE_MS * 2 ** attempt
+      if (attempt === MAX_ATTEMPTS - 1 || Date.now() + backoff >= deadline) {
+        break
+      }
+      await sleep(backoff, { signal })
     }
-  ).finally(() => controller.abort())
+  } finally {
+    controller.abort()
+  }
+
+  if (!lastShortfall) {
+    throw new BalanceError('Could not read wallet balance.', lastFailure)
+  }
+
+  // Slippage rescue: only when the sole shortfall is the source-token
+  // portion. Trim source to (balance − reserved overhead) so the overhead
+  // reserve is preserved.
+  if (lastShortfall.length === 1 && lastShortfall[0].req.sourcePart > 0n) {
+    const { req, have } = lastShortfall[0]
+    const reserved = reservedOverhead(req)
+    const minAcceptable =
+      (req.sourcePart * slippageScaled) / SLIPPAGE_PRECISION + reserved
+    if (have >= minAcceptable) {
+      const newFromAmount = (have - reserved).toString()
+      step.action.fromAmount = newFromAmount
+      if (step.includedSteps?.length) {
+        step.includedSteps[0].action.fromAmount = newFromAmount
+      }
+      return
+    }
+  }
+
+  const lines = lastShortfall.map(({ req, have }) => {
+    const needed = formatUnits(need(req), req.token.decimals)
+    const current = formatUnits(have, req.token.decimals)
+    const symbol = req.token.symbol
+    // The "fees" branch covers pure-overhead tokens; with
+    // walletPaysGas=false, gas is excluded from `need(req)` so it
+    // only fires for genuine fee shortfalls.
+    return req.sourcePart > 0n
+      ? `Your ${symbol} balance is too low, you try to transfer ${needed} ${symbol}, but your wallet only holds ${current} ${symbol}.`
+      : `Insufficient ${symbol} for fees: need ${needed} ${symbol}, have ${current} ${symbol}.`
+  })
+  throw new BalanceError(
+    'The balance is too low.',
+    new Error(`${lines.join(' ')} No funds have been sent.`)
+  )
 }

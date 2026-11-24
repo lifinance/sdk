@@ -722,9 +722,34 @@ describe('checkBalance — RPC failures', () => {
     ).resolves.toBeUndefined()
     expect(getBalance).toHaveBeenCalledTimes(2)
   })
+
+  it('decides from the last good read when later reads miss the balance', async () => {
+    const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
+    const { client } = buildClient([
+      { [USDC.address.toLowerCase()]: 996_000n },
+      ...Array(5).fill({ [USDC.address.toLowerCase()]: undefined }),
+    ])
+    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
+    expect(step.action.fromAmount).toBe('996000')
+  })
 })
 
 describe('checkBalance — overall timeout', () => {
+  const readsTaking = (
+    getBalance: ReturnType<typeof vi.fn>,
+    ms: number,
+    amount: bigint
+  ) =>
+    getBalance.mockImplementation(
+      (_client, _wallet, tokens: Token[]) =>
+        new Promise<TokenAmount[]>((resolve) =>
+          setTimeout(
+            () => resolve(tokens.map((token) => ({ ...token, amount }))),
+            ms
+          )
+        )
+    )
+
   afterEach(() => {
     vi.useRealTimers()
   })
@@ -748,37 +773,98 @@ describe('checkBalance — overall timeout', () => {
     }
   })
 
-  it('does not change the step after the timeout has rejected', async () => {
+  it('rescues before the time limit when each read takes 4 s', async () => {
     vi.useFakeTimers()
     const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
     const { client, getBalance } = buildClient([])
-    // Inside slippage: the final attempt trims `fromAmount` to this balance.
-    const withinSlippage = (tokens: Token[]): TokenAmount[] =>
-      tokens.map((token) => ({ ...token, amount: 996_000n }))
+    readsTaking(getBalance, 4_000, 996_000n)
+    const checked = expect(
+      checkBalance(client, WALLET, step)
+    ).resolves.toBeUndefined()
+    await vi.advanceTimersByTimeAsync(15_000)
+    await checked
+    expect(step.action.fromAmount).toBe('996000')
+    expect(getBalance).toHaveBeenCalledTimes(4)
+  })
+
+  it('reports the real shortfall when each read takes 4 s', async () => {
+    vi.useFakeTimers()
+    const { client, getBalance } = buildClient([])
+    readsTaking(getBalance, 4_000, 980_000n)
+    const checked = expect(
+      checkBalance(client, WALLET, buildStep())
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'The balance is too low.',
+      cause: expect.objectContaining({
+        message: expect.stringContaining('only holds 0.98 USDC'),
+      }),
+    })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await checked
+  })
+
+  it('does not start a backoff that ends after the time limit', async () => {
+    vi.useFakeTimers()
+    const { client, getBalance } = buildClient([])
+    readsTaking(getBalance, 7_450, 980_000n)
+    const checked = expect(
+      checkBalance(client, WALLET, buildStep())
+    ).rejects.toMatchObject({
+      message: 'The balance is too low.',
+    })
+    // Read 2 ends at 14.9 s. The next backoff (300 ms) would end after 15 s.
+    await vi.advanceTimersByTimeAsync(14_900)
+    await checked
+    expect(getBalance).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(sleep)).toHaveBeenCalledTimes(1)
+  })
+
+  it('throws "Could not read wallet balance" with a cause when no read finishes in time', async () => {
+    vi.useFakeTimers()
+    const { client, getBalance } = buildClient([])
+    getBalance.mockImplementation(() => new Promise<TokenAmount[]>(() => {}))
+    const checked = expect(
+      checkBalance(client, WALLET, buildStep())
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'Could not read wallet balance.',
+      cause: expect.objectContaining({ message: 'Balance read timed out.' }),
+    })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await checked
+    expect(getBalance).toHaveBeenCalledTimes(1)
+  })
+
+  it('decides from the last good read when the final read hangs, and ignores the late read', async () => {
+    vi.useFakeTimers()
+    const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
+    const { client, getBalance } = buildClient([])
+    const balanceOf =
+      (amount: bigint) =>
+      (tokens: Token[]): TokenAmount[] =>
+        tokens.map((token) => ({ ...token, amount }))
     let releaseFinalRead!: () => void
     getBalance.mockImplementation(async (_client, _wallet, tokens: Token[]) => {
       if (getBalance.mock.calls.length < 6) {
-        return withinSlippage(tokens)
+        return balanceOf(996_000n)(tokens)
       }
-      // The final read hangs past the overall timeout.
+      // The final read hangs past the time limit.
       return new Promise<TokenAmount[]>((resolve) => {
-        releaseFinalRead = () => resolve(withinSlippage(tokens))
+        releaseFinalRead = () => resolve(balanceOf(997_000n)(tokens))
       })
     })
 
     const checked = expect(
       checkBalance(client, WALLET, step)
-    ).rejects.toMatchObject({
-      code: LiFiErrorCode.BalanceError,
-      message: 'Could not read wallet balance.',
-    })
-    await vi.advanceTimersByTimeAsync(10_000)
+    ).resolves.toBeUndefined()
+    await vi.advanceTimersByTimeAsync(15_000)
     await checked
+    expect(step.action.fromAmount).toBe('996000')
 
     releaseFinalRead()
     await vi.advanceTimersByTimeAsync(0)
-
+    expect(step.action.fromAmount).toBe('996000')
     expect(getBalance).toHaveBeenCalledTimes(6)
-    expect(step.action.fromAmount).toBe('1000000')
   })
 })
