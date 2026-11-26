@@ -75,7 +75,11 @@ import {
   type SuiClientTypes,
 } from '@mysten/sui/client'
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
-import { Transaction, TransactionDataBuilder } from '@mysten/sui/transactions'
+import {
+  DEFAULT_RESTRICTED_MOVE_CALLS,
+  Transaction,
+  TransactionDataBuilder,
+} from '@mysten/sui/transactions'
 import { fromBase58, fromBase64, toBase64 } from '@mysten/sui/utils'
 import { verifyTransactionSignature } from '@mysten/sui/verify'
 import { type Mock, vi } from 'vitest'
@@ -426,11 +430,13 @@ const urlOf = (input: unknown): string =>
 
 const transactionResult = (
   digest: string,
+  sender: string,
   signatures: string[],
   failure: SuiClientTypes.ExecutionError | null
 ): SuiClientTypes.TransactionResult => {
   const transaction = {
     digest,
+    sender,
     signatures,
     epoch: '1266',
     timestampMs: null,
@@ -460,6 +466,8 @@ let quoteCounter = 0
 
 const createFakeSuiNetwork = (): FakeSuiNetwork => {
   const signaturesByDigest = new Map<string, string[]>()
+  // @mysten/sui 3 results carry the sender; system transactions report 0x0.
+  const sendersByDigest = new Map<string, string>()
 
   /**
    * Errors a fake throws on purpose: a failure the spec plans, or a miss
@@ -520,6 +528,11 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
           if (property === 'core') {
             return proxy
           }
+          // A data field, not a method: a Transaction build reads it from
+          // `client.core`. A real CoreClient answers the default list.
+          if (property === 'restrictedMoveCalls') {
+            return DEFAULT_RESTRICTED_MOVE_CALLS
+          }
           const name = `${prefix}${property}`
           const fake = fakes[property]
           const real = library[property]
@@ -558,6 +571,7 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
       try {
         await verifyTransactionSignature(options.transaction, signature, {
           address: sender ?? undefined,
+          offline: true,
         })
       } catch {
         network.unexpected.push(`invalid signature for ${digestOf(bytes)}`)
@@ -568,10 +582,12 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
     if (!network.landed.has(digest)) {
       network.landed.set(digest, network.failNextExecution ?? null)
       signaturesByDigest.set(digest, [...options.signatures])
+      sendersByDigest.set(digest, sender ?? '0x0')
       network.failNextExecution = undefined
     }
     return transactionResult(
       digest,
+      sendersByDigest.get(digest) ?? '0x0',
       signaturesByDigest.get(digest) ?? [],
       network.landed.get(digest) ?? null
     )
@@ -619,6 +635,7 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
       }
       return transactionResult(
         options.digest,
+        sendersByDigest.get(options.digest) ?? '0x0',
         signaturesByDigest.get(options.digest) ?? [],
         network.landed.get(options.digest) ?? null
       )

@@ -89,8 +89,11 @@ export async function verifySuiSignedTransaction(
   if (!sender) {
     return false
   }
+  // Offline on purpose: the check needs no node, and a zkLogin signature
+  // rejects (see above) instead of counting as damaged bytes.
   return isValidTransactionSignature(transaction.bytes, transaction.signature, {
     address: sender,
+    offline: true,
   })
 }
 
