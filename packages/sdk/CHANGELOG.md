@@ -1,5 +1,11 @@
 # @lifi/sdk
 
+## 4.14.0
+
+### Minor Changes
+
+- [#535](https://github.com/lifinance/sdk/pull/535) [`09fa8a3`](https://github.com/lifinance/sdk/commit/09fa8a35f30fe67f136cd6d6c7bd32c23f1b8c1f) Thanks [@glarov95](https://github.com/glarov95)! - `getStatus` accepts a Smart Deposits `{ depositAddress, fromChain }` lookup and returns `SmartDepositsStatusResponse` for it.
+
 ## 4.13.0
 
 ### Minor Changes
