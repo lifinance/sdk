@@ -504,7 +504,7 @@ describe('a later step', () => {
 
   /** Runs a route whose first step is done and received `receivedAmount`. */
   const runSecondStep = async (
-    receivedAmount: string
+    receivedAmount: string | undefined
   ): Promise<Partial<LiFiStepExtended>> => {
     let seen: Partial<LiFiStepExtended> = {}
     const executor: StepExecutor = {
@@ -568,6 +568,16 @@ describe('a later step', () => {
 
   // A stored route can carry the request of an earlier run, which a run
   // through executeRoute (without prepareRestart) would otherwise reuse.
+  // A status can be DONE without `receiving.amount`, so the previous step has
+  // no `toAmount`. The step keeps its planned amount but still gets a fresh
+  // transaction.
+  it('gets no transaction request also when the previous step reports no received amount', async () => {
+    const seen = await runSecondStep(undefined)
+
+    expect(seen.action?.fromAmount).toBe('1000')
+    expect(seen.transactionRequest).toBeUndefined()
+  })
+
   it('gets no transaction request also when the amount that arrived is the same', async () => {
     const seen = await runSecondStep('1000')
 
