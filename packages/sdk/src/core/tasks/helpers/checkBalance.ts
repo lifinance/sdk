@@ -8,6 +8,8 @@ import { withTimeout } from '../../../utils/withTimeout.js'
 const MAX_ATTEMPTS = 6
 // Exponential backoff: 150, 300, 600, 1200, 2400 → ≈4.65s of sleep total.
 const BACKOFF_BASE_MS = 150
+// Leaves room for one read through the next RPC URL: viem's fallback
+// transport moves on only after its 10 s http timeout.
 const OVERALL_TIMEOUT_MS = 15_000
 
 type Bucket = 'source' | 'gas' | 'fee'
@@ -50,7 +52,9 @@ export type CheckBalanceOptions = {
  * the check decides from the latest read in which every balance was known,
  * and throws BalanceError("The balance is too low.") with the real numbers.
  * It throws BalanceError("Could not read wallet balance.") only when no such
- * read succeeded, with the last read error as the cause.
+ * read succeeded, with the last read error as the cause. Without a good read
+ * the step does not go on: a transaction for funds the wallet does not hold
+ * can still be sent and fail on chain, which costs gas.
  */
 export const checkBalance = async (
   client: SDKClient,

@@ -689,16 +689,35 @@ describe('checkBalance — overall timeout', () => {
     }
   })
 
-  it('passes when a read takes 4 s and the balance covers the step', async () => {
+  // When the first RPC URL hangs, viem's fallback transport moves to the next
+  // URL only after its 10 s http timeout. The time limit must leave room for
+  // that read.
+  it('passes when the first RPC URL hangs and the next URL answers after 10 s', async () => {
     useFakeClock()
     const { client, getBalance } = buildClient([])
-    readsTaking(getBalance, 4_000, 1_000_000n)
+    readsTaking(getBalance, 10_050, 1_000_000n)
     const checked = expect(
       checkBalance(client, WALLET, buildStep())
     ).resolves.toBeUndefined()
-    await vi.advanceTimersByTimeAsync(4_000)
+    await vi.advanceTimersByTimeAsync(10_050)
     await checked
     expect(getBalance).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports the real shortfall when the first RPC URL hangs', async () => {
+    useFakeClock()
+    const { client, getBalance } = buildClient([])
+    readsTaking(getBalance, 10_050, 980_000n)
+    const checked = expect(
+      checkBalance(client, WALLET, buildStep())
+    ).rejects.toMatchObject({
+      message: 'The balance is too low.',
+      cause: expect.objectContaining({
+        message: expect.stringContaining('only holds 0.98 USDC'),
+      }),
+    })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await checked
   })
 
   it('reports the real shortfall when each read takes 4 s', async () => {
