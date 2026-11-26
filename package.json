@@ -46,20 +46,20 @@
     "@commitlint/config-conventional": "^21.2.4",
     "@size-limit/esbuild": "^14.3.0",
     "@size-limit/file": "^14.3.0",
-    "@types/node": "^26.6.6",
+    "@types/node": "^26.6.10",
     "@types/ws": "^8.18.2",
-    "@vitest/coverage-v8": "^5.1.1",
+    "@vitest/coverage-v8": "^5.1.2",
     "husky": "^9.1.7",
-    "knip": "^6.45.1",
-    "oxfmt": "0.79.0",
-    "oxlint": "1.94.0",
+    "knip": "^6.48.0",
+    "oxfmt": "0.80.0",
+    "oxlint": "1.95.0",
     "size-limit": "^14.3.0",
     "tsdown": "^0.23.7",
     "typescript": "^7.0.2",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.2"
   },
   "publishConfig": {
     "access": "public"
   },
-  "packageManager": "pnpm@12.21.0+sha512.66fd8278ee28935ce951792d34367ff3af5c432a2756445823029533835b8da529bbe0be5130afd56ed0713fb8789e47bad82d93bd5ae2fe54b15562d6276ef0"
+  "packageManager": "pnpm@12.23.0+sha512.02da94ffaf133f46074322afe552f90d40b5f71ae259aefbccdacc5085b1d617e98d65e0131f5748b9b67445978ee5055d7d59a473f1eef0d504854fefcd5975"
 }

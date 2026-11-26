@@ -4,22 +4,12 @@ allowBuilds:
   esbuild: false
   msw: true
   nx: true
-#   - 2026-11-18: fast-track @vitest/browser-playwright@5.1.1, @vitest/browser-preview@5.1.1, @vitest/browser@5.1.1, @vitest/coverage-istanbul@5.1.1, @vitest/coverage-v8@5.1.1, @vitest/mocker@5.1.1, @vitest/pretty-format@5.1.1, @vitest/spy@5.1.1, @vitest/ui@5.1.1, @vitest/utils@5.1.1, msw@3.0.7, vitest@5.1.1 (all checks pass).
+#   - 2026-11-26: fast-track msw@3.0.8, viem@2.58.7 (all checks pass).
 minimumReleaseAgeExclude:
   - '@bigmi/*'
   - '@lifi/*'
-  - '@vitest/browser@5.1.1'
-  - '@vitest/browser-playwright@5.1.1'
-  - '@vitest/browser-preview@5.1.1'
-  - '@vitest/coverage-istanbul@5.1.1'
-  - '@vitest/coverage-v8@5.1.1'
-  - '@vitest/mocker@5.1.1'
-  - '@vitest/pretty-format@5.1.1'
-  - '@vitest/spy@5.1.1'
-  - '@vitest/ui@5.1.1'
-  - '@vitest/utils@5.1.1'
-  - msw@3.0.7
-  - vitest@5.1.1
+  - msw@3.0.8
+  - viem@2.58.7
 overrides:
   axios: ^1.21.1
   ws@<=8.23.0: 8.23.0
@@ -35,3 +25,7 @@ overrides:
   # 3.21.4 exactly; no tronweb release fixes it. A TRX and a TRC-20 round trip give
   # the same bytes on 4.x.
   'google-protobuf@<4.0.3': '^4.0.3'
+  # @inquirer/core 12.1.1 (from msw) moved back to mute-stream ^3 to keep Node 20
+  # support (SBoudrias/Inquirer.js#2449). This repo runs on Node 24, so keep 4.0.0.
+  # Remove this when @inquirer/core asks for mute-stream ^4 again.
+  mute-stream: 4.0.0
