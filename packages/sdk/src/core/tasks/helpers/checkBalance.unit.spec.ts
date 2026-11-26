@@ -707,7 +707,7 @@ describe('checkBalance — overall timeout', () => {
     vi.useRealTimers()
   })
 
-  it('passes a signal to every backoff sleep and aborts it when it settles', async () => {
+  it('backs off after a failed read and after a low balance', async () => {
     const { client } = buildClient([
       'reject',
       { [USDC.address.toLowerCase()]: 0n },
@@ -719,11 +719,7 @@ describe('checkBalance — overall timeout', () => {
     ).resolves.toBeUndefined()
 
     // One sleep after the failed read, one after the low balance.
-    const calls = vi.mocked(sleep).mock.calls
-    expect(calls).toHaveLength(2)
-    for (const [, options] of calls) {
-      expect(options?.signal?.aborted).toBe(true)
-    }
+    expect(vi.mocked(sleep).mock.calls.map(([ms]) => ms)).toEqual([150, 300])
   })
 
   // When the first RPC URL hangs, viem's fallback transport moves to the next

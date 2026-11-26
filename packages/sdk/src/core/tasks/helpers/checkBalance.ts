@@ -127,10 +127,6 @@ export const checkBalance = async (
   const reqs = Array.from(requirements.values())
   const tokens = reqs.map((r) => r.token)
 
-  // Passed to every backoff sleep and aborted once the check settles, so no
-  // sleep outlives the check.
-  const controller = new AbortController()
-  const { signal } = controller
   const deadline = Date.now() + OVERALL_TIMEOUT_MS
 
   // The shortfall of the latest read in which every balance was known, and
@@ -139,73 +135,69 @@ export const checkBalance = async (
   let lastShortfall: Shortfall | undefined
   let lastFailure: Error | undefined
 
-  try {
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const remaining = deadline - Date.now()
-      if (remaining <= 0) {
-        break
-      }
-
-      let balances: TokenAmount[] | undefined
-      try {
-        balances = await withTimeout(
-          () => provider.getBalance(client, walletAddress, tokens),
-          {
-            timeout: remaining,
-            errorInstance: new Error('Balance read timed out.'),
-          }
-        )
-      } catch (error) {
-        lastFailure = error as Error
-      }
-
-      if (balances) {
-        const balanceByAddress = new Map(
-          balances.map((b) => [b.address.toLowerCase(), b.amount] as const)
-        )
-        const unknown: Token[] = []
-        const insufficient: Shortfall = []
-        for (const req of reqs) {
-          const have = balanceByAddress.get(req.token.address.toLowerCase())
-          if (have === undefined) {
-            unknown.push(req.token)
-          } else if (have < need(req)) {
-            insufficient.push({ req, have })
-          }
-        }
-
-        if (unknown.length === 0 && insufficient.length === 0) {
-          return
-        }
-        if (unknown.length > 0) {
-          lastFailure = new Error(
-            `Could not read balance for: ${unknown
-              .map((t) => t.symbol || t.address)
-              .join(', ')}.`
-          )
-          // This read cannot see every balance, but it can show that an
-          // older shortfall is gone. Then do not report that shortfall.
-          const isCovered = ({ req }: Shortfall[number]): boolean => {
-            const have = balanceByAddress.get(req.token.address.toLowerCase())
-            return have !== undefined && have >= need(req)
-          }
-          if (lastShortfall?.every(isCovered)) {
-            lastShortfall = undefined
-          }
-        } else {
-          lastShortfall = insufficient
-        }
-      }
-
-      // Decide now rather than start a backoff that ends after the deadline.
-      const backoff = BACKOFF_BASE_MS * 2 ** attempt
-      if (attempt === MAX_ATTEMPTS - 1 || Date.now() + backoff >= deadline) {
-        break
-      }
-      await sleep(backoff, { signal })
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const remaining = deadline - Date.now()
+    if (remaining <= 0) {
+      break
     }
-  } finally {
-    controller.abort()
+
+    let balances: TokenAmount[] | undefined
+    try {
+      balances = await withTimeout(
+        () => provider.getBalance(client, walletAddress, tokens),
+        {
+          timeout: remaining,
+          errorInstance: new Error('Balance read timed out.'),
+        }
+      )
+    } catch (error) {
+      lastFailure = error as Error
+    }
+
+    if (balances) {
+      const balanceByAddress = new Map(
+        balances.map((b) => [b.address.toLowerCase(), b.amount] as const)
+      )
+      const unknown: Token[] = []
+      const insufficient: Shortfall = []
+      for (const req of reqs) {
+        const have = balanceByAddress.get(req.token.address.toLowerCase())
+        if (have === undefined) {
+          unknown.push(req.token)
+        } else if (have < need(req)) {
+          insufficient.push({ req, have })
+        }
+      }
+
+      if (unknown.length === 0 && insufficient.length === 0) {
+        return
+      }
+      if (unknown.length > 0) {
+        lastFailure = new Error(
+          `Could not read balance for: ${unknown
+            .map((t) => t.symbol || t.address)
+            .join(', ')}.`
+        )
+        // This read cannot see every balance, but it can show that an
+        // older shortfall is gone. Then do not report that shortfall.
+        const isCovered = ({ req }: Shortfall[number]): boolean => {
+          const have = balanceByAddress.get(req.token.address.toLowerCase())
+          return have !== undefined && have >= need(req)
+        }
+        if (lastShortfall?.every(isCovered)) {
+          lastShortfall = undefined
+        }
+      } else {
+        lastShortfall = insufficient
+      }
+    }
+
+    // Decide now rather than start a backoff that ends after the deadline.
+    const backoff = BACKOFF_BASE_MS * 2 ** attempt
+    if (attempt === MAX_ATTEMPTS - 1 || Date.now() + backoff >= deadline) {
+      break
+    }
+    await sleep(backoff)
   }
 
   if (!lastShortfall) {
