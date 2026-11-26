@@ -35,3 +35,7 @@ overrides:
   # 3.21.4 exactly; no tronweb release fixes it. A TRX and a TRC-20 round trip give
   # the same bytes on 4.x.
   'google-protobuf@<4.0.3': '^4.0.3'
+  # @inquirer/core 12.1.1 (from msw) moved back to mute-stream ^3 to keep Node 20
+  # support (SBoudrias/Inquirer.js#2449). This repo runs on Node 24, so keep 4.0.0.
+  # Remove this when @inquirer/core asks for mute-stream ^4 again.
+  mute-stream: 4.0.0
