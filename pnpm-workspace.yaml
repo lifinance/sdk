@@ -5,6 +5,7 @@ allowBuilds:
   msw: true
   nx: true
 #   - 2026-11-18: fast-track @vitest/browser-playwright@5.1.1, @vitest/browser-preview@5.1.1, @vitest/browser@5.1.1, @vitest/coverage-istanbul@5.1.1, @vitest/coverage-v8@5.1.1, @vitest/mocker@5.1.1, @vitest/pretty-format@5.1.1, @vitest/spy@5.1.1, @vitest/ui@5.1.1, @vitest/utils@5.1.1, msw@3.0.7, vitest@5.1.1 (all checks pass).
+#   - 2026-11-26: fast-track msw@3.0.8, viem@2.58.7 (all checks pass).
 minimumReleaseAgeExclude:
   - '@bigmi/*'
   - '@lifi/*'
@@ -19,6 +20,8 @@ minimumReleaseAgeExclude:
   - '@vitest/ui@5.1.1'
   - '@vitest/utils@5.1.1'
   - msw@3.0.7
+  - msw@3.0.8
+  - viem@2.58.7
   - vitest@5.1.1
 overrides:
   axios: ^1.21.1
