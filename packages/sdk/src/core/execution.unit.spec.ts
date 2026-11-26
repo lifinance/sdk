@@ -566,10 +566,12 @@ describe('a later step', () => {
     expect(seen.transactionRequest).toBeUndefined()
   })
 
-  it('keeps the transaction request when the amount that arrived is the same', async () => {
+  // A stored route can carry the request of an earlier run, which a run
+  // through executeRoute (without prepareRestart) would otherwise reuse.
+  it('gets no transaction request also when the amount that arrived is the same', async () => {
     const seen = await runSecondStep('1000')
 
     expect(seen.action?.fromAmount).toBe('1000')
-    expect(seen.transactionRequest).toEqual({ data: '0xquoted' })
+    expect(seen.transactionRequest).toBeUndefined()
   })
 })

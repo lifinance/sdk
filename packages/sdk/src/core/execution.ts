@@ -114,11 +114,14 @@ const executeSteps = async (
     // Update step fromAmount using output of the previous step execution. In the future this should be handled by calling `updateRoute`
     const receivedAmount = previousStep?.execution?.toAmount
     if (receivedAmount) {
-      // A transaction request is built for one amount. Without one, the
-      // prepare task quotes the step again for the amount that arrived.
-      if (step.action.fromAmount !== receivedAmount) {
-        step.transactionRequest = undefined
-      }
+      // Without a transaction request, the prepare task quotes the step again
+      // for the amount that arrived. Drop it also when the amount is the same:
+      // a stored route can carry the request of an earlier run, and a new
+      // run through `executeRoute` (no `prepareRestart`) would reuse it.
+      // `estimate` and `typedData` stay: `stepComparison` compares the fresh
+      // quote with the quoted estimate, and the EVM strategy reads typed data
+      // before prepare.
+      step.transactionRequest = undefined
       step.action.fromAmount = receivedAmount
       if (step.includedSteps?.length) {
         step.includedSteps[0].action.fromAmount = receivedAmount
