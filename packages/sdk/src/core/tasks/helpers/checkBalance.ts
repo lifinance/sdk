@@ -183,6 +183,15 @@ export const checkBalance = async (
               .map((t) => t.symbol || t.address)
               .join(', ')}.`
           )
+          // This read cannot see every balance, but it can show that an
+          // older shortfall is gone. Then do not report that shortfall.
+          const isCovered = ({ req }: Shortfall[number]): boolean => {
+            const have = balanceByAddress.get(req.token.address.toLowerCase())
+            return have !== undefined && have >= need(req)
+          }
+          if (lastShortfall?.every(isCovered)) {
+            lastShortfall = undefined
+          }
         } else {
           lastShortfall = insufficient
         }

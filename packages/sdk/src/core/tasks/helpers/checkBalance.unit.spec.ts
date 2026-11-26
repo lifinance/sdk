@@ -639,6 +639,43 @@ describe('checkBalance — RPC failures', () => {
   })
 })
 
+describe('checkBalance — a newer read that covers an older shortfall', () => {
+  // Read 1 is before the funds arrived. The later reads see the funds, but
+  // not the gas token. The old shortfall is gone, so the check must not
+  // report it: the real problem is the gas balance it cannot read.
+  it('reports the unreadable token, not a shortfall that a newer read covers', async () => {
+    const step = buildStep()
+    step.estimate!.gasCosts = [
+      {
+        type: 'SUM',
+        price: '0',
+        estimate: '0',
+        limit: '0',
+        amount: '5000000000000000',
+        amountUSD: '0',
+        token: NATIVE_ETH,
+      },
+    ] as any
+    const { client } = buildClient([
+      {
+        [USDC.address.toLowerCase()]: 0n,
+        [NATIVE_ETH.address.toLowerCase()]: 1_000_000_000_000_000_000n,
+      },
+      ...Array(5).fill({
+        [USDC.address.toLowerCase()]: 1_000_000n,
+        [NATIVE_ETH.address.toLowerCase()]: undefined,
+      }),
+    ])
+    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'Could not read wallet balance.',
+      cause: expect.objectContaining({
+        message: 'Could not read balance for: ETH.',
+      }),
+    })
+  })
+})
+
 describe('checkBalance — overall timeout', () => {
   const readsTaking = (
     getBalance: ReturnType<typeof vi.fn>,
