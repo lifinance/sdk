@@ -330,11 +330,12 @@ describe('SuiWaitForTransactionTask', () => {
         new SuiWaitForTransactionTask().run(context)
       ).resolves.toEqual({ status: 'COMPLETED' })
 
-      expect(verifySuiSignedTransaction).toHaveBeenCalledWith({
-        bytes: BYTES,
-        signature: SIGNATURE,
-        digest: DIGEST,
-      })
+      // Checked on a node of the SDK, within the lookup deadline.
+      expect(verifySuiSignedTransaction).toHaveBeenCalledWith(
+        { bytes: BYTES, signature: SIGNATURE, digest: DIGEST },
+        expect.objectContaining({ core: expect.anything() }),
+        expect.any(AbortSignal)
+      )
       expect(executeTransaction).toHaveBeenCalledTimes(1)
       expect(executeTransaction).toHaveBeenCalledWith({
         transaction: BYTES,
@@ -541,9 +542,9 @@ describe('SuiWaitForTransactionTask', () => {
       expect(waitForTransaction).toHaveBeenCalledWith({ digest: DIGEST })
     })
 
-    // A `false` can also mean a signature scheme the library cannot parse,
-    // and a rejection means the check could not run: neither proves damage,
-    // and the bytes may have been sent. The outcome stays unknown.
+    // A `false` means that no node confirms the signature, and a rejection
+    // means that no node could run the check: neither proves damage, and the
+    // bytes may have been sent. The outcome stays unknown.
     describe.each([
       [
         'does not verify',

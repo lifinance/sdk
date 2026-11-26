@@ -401,8 +401,8 @@ importers:
         specifier: workspace:*
         version: link:../sdk
       '@mysten/sui':
-        specifier: ^2.39.1
-        version: 2.39.1(typescript@7.0.2)
+        specifier: ^3.0.1
+        version: 3.0.1(typescript@7.0.2)
     devDependencies:
       '@lifi/data-types':
         specifier: ^8.0.0
@@ -996,8 +996,8 @@ packages:
   '@mysten/bcs@2.1.4':
     resolution: {integrity: sha512-ksfm0HGy82iDcuLaf4kAduaeTNqALH8D8WCdxxwU/L2Gpk4SnqoC7D8R4qMoMpCSkh56CFVG3Tme343Iz2P8PA==}
 
-  '@mysten/sui@2.39.1':
-    resolution: {integrity: sha512-cFhIn7WJcT6thzKlBO2OtqyLX5uigY/1IK0PRTa6o50Bcy0qLhacu+fjhqY7uHeXlXGrjc/kIsXs5o4KtPcieg==}
+  '@mysten/sui@3.0.1':
+    resolution: {integrity: sha512-humKrLNPyScafqwbl2axfffWO9YVK3blAkxHJyBy4tid5CZ1P19NIRlHv659oa8DhR8KeGpCTeb9/8xcoIDKkQ==}
     engines: {node: '>=22'}
 
   '@mysten/utils@0.4.2':
@@ -4642,7 +4642,7 @@ snapshots:
       '@mysten/utils': 0.4.2
       '@scure/base': 2.4.0
 
-  '@mysten/sui@2.39.1(typescript@7.0.2)':
+  '@mysten/sui@3.0.1(typescript@7.0.2)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@17.1.0)
       '@mysten/bcs': 2.1.4

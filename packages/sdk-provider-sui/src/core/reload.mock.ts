@@ -43,8 +43,13 @@ import { type ClientWithCoreApi, TransactionError } from '@mysten/sui/client'
 import type { Signer } from '@mysten/sui/cryptography'
 import { GrpcTypes, RpcError } from '@mysten/sui/grpc'
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
-import { Transaction, TransactionDataBuilder } from '@mysten/sui/transactions'
+import {
+  DEFAULT_RESTRICTED_MOVE_CALLS,
+  Transaction,
+  TransactionDataBuilder,
+} from '@mysten/sui/transactions'
 import { toBase58, toBase64 } from '@mysten/sui/utils'
+import { isValidTransactionSignature } from '@mysten/sui/verify'
 import { type Mock, vi } from 'vitest'
 import { SuiProvider } from '../SuiProvider.js'
 
@@ -344,6 +349,11 @@ export const createFakeSuiNetwork = (): FakeSuiNetwork => {
           if (typeof property !== 'string' || property === 'then') {
             return undefined
           }
+          // A data field, not a method: a Transaction build reads it from
+          // `client.core`. A real CoreClient answers the default list.
+          if (property === 'restrictedMoveCalls') {
+            return DEFAULT_RESTRICTED_MOVE_CALLS
+          }
           const name = `${prefix}${property}`
           const method = implemented[property]
           return (...args: never[]) => {
@@ -361,6 +371,21 @@ export const createFakeSuiNetwork = (): FakeSuiNetwork => {
   const core = recording('', {
     executeTransaction: execute,
     getTransaction,
+    // A full node checks a plain key's signature the same way as this local
+    // check.
+    async verifySignature(options: {
+      transaction: Uint8Array
+      signature: string
+      address: string
+    }) {
+      return {
+        valid: await isValidTransactionSignature(
+          options.transaction,
+          options.signature,
+          { address: options.address, offline: true }
+        ),
+      }
+    },
     async waitForTransaction(options: {
       digest?: string
       result?: Record<string, { digest: string }>

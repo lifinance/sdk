@@ -90,14 +90,14 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
     }
 
     // Stored bytes prove nothing when their digest is not the stored txHash
-    // (damaged storage) or their signature does not verify: the check also
-    // fails for a scheme it cannot parse or cannot run, and the bytes may
-    // have been sent. Then the SDK neither sends nor drops; it only waits,
-    // and the outcome stays unknown.
+    // (damaged storage) or no node confirms their signature: the check also
+    // fails when no node can run it, and the bytes may have been sent. Then
+    // the SDK neither sends nor drops; it only waits, and the outcome stays
+    // unknown.
     const doubtful =
       !!storedTransaction &&
       (storedTransaction.digest !== digest ||
-        !(await isVerifiedSuiTransaction(storedTransaction)))
+        !(await isVerifiedSuiTransaction(client, storedTransaction)))
 
     const signedAt = step.execution?.signedAt
     if (
@@ -221,12 +221,22 @@ function createAgeCapError(): Error {
   return error
 }
 
-/** True only when the check runs and confirms the sender's signature. */
+/**
+ * True only when a node confirms the sender's signature. A node that fails
+ * or does not answer within `SUI_LOOKUP_TIMEOUT_MS` counts as failed, so the
+ * next node is asked; a definite answer from a node is final.
+ */
 async function isVerifiedSuiTransaction(
+  client: SDKClient,
   transaction: SuiSignedTransaction
 ): Promise<boolean> {
   try {
-    return (await verifySuiSignedTransaction(transaction)) === true
+    return await callSuiWithRetry(client, (suiClient) =>
+      callWithinDeadline(
+        (signal) => verifySuiSignedTransaction(transaction, suiClient, signal),
+        SUI_LOOKUP_TIMEOUT_MS
+      )
+    )
   } catch {
     return false
   }
