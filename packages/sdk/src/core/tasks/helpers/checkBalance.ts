@@ -4,13 +4,11 @@ import type { SDKClient } from '../../../types/core.js'
 import { formatUnits } from '../../../utils/formatUnits.js'
 import { sleep } from '../../../utils/sleep.js'
 import { withTimeout } from '../../../utils/withTimeout.js'
-import { DEFAULT_SLIPPAGE_THRESHOLD } from '../../utils.js'
 
 const MAX_ATTEMPTS = 6
 // Exponential backoff: 150, 300, 600, 1200, 2400 → ≈4.65s of sleep total.
 const BACKOFF_BASE_MS = 150
 const OVERALL_TIMEOUT_MS = 15_000
-const SLIPPAGE_PRECISION = 1_000_000_000n
 
 type Bucket = 'source' | 'gas' | 'fee'
 
@@ -27,40 +25,32 @@ export type CheckBalanceOptions = {
   /**
    * Set to `false` when outer-tx gas is paid by something other than
    * `walletAddress` (SCA executor, 4337 bundler / paymaster, relayer):
-   * `gasPart` is excluded from the sufficiency check and slippage rescue.
+   * `gasPart` is excluded from the sufficiency check.
    * Source amount and non-included fees (e.g. LZ `msg.value`) are still
    * verified. Defaults to `true` (strict, today's behavior).
    */
   walletPaysGas?: boolean
-  /**
-   * Set to `false` when something already signed for the exact source amount
-   * (an EIP-2612 permit): a lower amount would not match the signature, so a
-   * shortfall throws instead of trimming `fromAmount`. Also set it when the
-   * step's calls are built for the quoted output (a contract-call step).
-   * Defaults to `true`.
-   */
-  allowAmountTrim?: boolean
 }
 
 /**
  * Verifies that the wallet holds enough of every token required to execute
  * the step on its source chain — the source-token amount, any gas costs, and
  * any non-included fee costs. Reads all balances in one batched provider
- * call, retries within a bounded budget to absorb transient RPC failures and
- * post-confirmation propagation lag, and applies slippage to the source-token
- * portion only as a last resort (overhead is never trimmed).
+ * call, and retries within a bounded budget to absorb transient RPC failures
+ * and post-confirmation propagation lag.
  *
- * A step quoted on Auto slippage has no `action.slippage`. The rescue then
- * allows `DEFAULT_SLIPPAGE_THRESHOLD` (0.5%), the API's default. The fallback
- * is only used here; it is never written into the step.
+ * The check never changes the step. The slippage is the on-chain tolerance
+ * of the swap; spending it here on a balance gap as well would let the user
+ * receive up to twice the slippage less than quoted. A later step gets the
+ * amount that really arrived from the previous step's status, and the
+ * prepare task quotes it again.
  *
  * Reads retry with backoff for up to `OVERALL_TIMEOUT_MS` (15 s), and each
  * read races the time that is left. When the attempts or the time run out,
- * the check decides from the latest read in which every balance was known:
- * it rescues the source amount within slippage, or throws
- * BalanceError("The balance is too low.") with the real numbers. It throws
- * BalanceError("Could not read wallet balance.") only when no such read
- * succeeded, with the last read error as the cause.
+ * the check decides from the latest read in which every balance was known,
+ * and throws BalanceError("The balance is too low.") with the real numbers.
+ * It throws BalanceError("Could not read wallet balance.") only when no such
+ * read succeeded, with the last read error as the cause.
  */
 export const checkBalance = async (
   client: SDKClient,
@@ -132,17 +122,6 @@ export const checkBalance = async (
 
   const reqs = Array.from(requirements.values())
   const tokens = reqs.map((r) => r.token)
-  const rawSlippage = step.action.slippage ?? DEFAULT_SLIPPAGE_THRESHOLD
-  // A slippage outside [0, 1) would let the rescue trim below the overhead
-  // reserve, or down to dust at 1; a non-number would make `BigInt` throw.
-  // Treat all of them as no slippage.
-  const slippage =
-    Number.isFinite(rawSlippage) && rawSlippage >= 0 && rawSlippage < 1
-      ? rawSlippage
-      : 0
-  const slippageScaled = BigInt(
-    Math.floor((1 - slippage) * Number(SLIPPAGE_PRECISION))
-  )
 
   // Passed to every backoff sleep and aborted once the check settles, so no
   // sleep outlives the check.
@@ -152,7 +131,7 @@ export const checkBalance = async (
 
   // The shortfall of the latest read in which every balance was known, and
   // the reason the latest other read failed. A read that is still pending
-  // when the check settles is never awaited, so it cannot change `step`.
+  // when the check settles is never awaited, so it cannot change the result.
   let lastShortfall: Shortfall | undefined
   let lastFailure: Error | undefined
 
@@ -218,31 +197,6 @@ export const checkBalance = async (
 
   if (!lastShortfall) {
     throw new BalanceError('Could not read wallet balance.', lastFailure)
-  }
-
-  // Slippage rescue: only when the sole shortfall is the source-token
-  // portion. Trim source to (balance − reserved overhead) so the overhead
-  // reserve is preserved.
-  if (
-    options.allowAmountTrim !== false &&
-    lastShortfall.length === 1 &&
-    lastShortfall[0].req.sourcePart > 0n
-  ) {
-    const { req, have } = lastShortfall[0]
-    const reserved = reservedOverhead(req)
-    const minAcceptable =
-      (req.sourcePart * slippageScaled) / SLIPPAGE_PRECISION + reserved
-    if (have >= minAcceptable && have > reserved) {
-      const newFromAmount = (have - reserved).toString()
-      step.action.fromAmount = newFromAmount
-      if (step.includedSteps?.length) {
-        step.includedSteps[0].action.fromAmount = newFromAmount
-      }
-      // A quote carries a transaction request built for the old amount.
-      // Drop it so the prepare task fetches one for the trimmed amount.
-      step.transactionRequest = undefined
-      return
-    }
   }
 
   const lines = lastShortfall.map(({ req, have }) => {

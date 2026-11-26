@@ -156,156 +156,33 @@ describe('checkBalance — source token', () => {
     expect(getBalance).toHaveBeenCalledTimes(3)
   })
 
-  it('adjusts source amount within slippage on the final attempt', async () => {
-    const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
-    // 0.5% slippage allows 995_000 minimum
-    const { client } = buildClient(
-      Array(6).fill({ [USDC.address.toLowerCase()]: 996_000n })
-    )
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('996000')
-  })
-
-  it('does not adjust when below slippage tolerance', async () => {
-    const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
-    const { client } = buildClient(
-      Array(6).fill({ [USDC.address.toLowerCase()]: 990_000n })
-    )
-    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
-      code: LiFiErrorCode.BalanceError,
-      message: 'The balance is too low.',
-    })
-    expect(step.action.fromAmount).toBe('1000000')
-  })
-
-  it('honours slippage to 1bp precision', async () => {
-    const step = buildStep({ slippage: 0.0001, fromAmount: '1000000000' })
-    // 1bp slippage → minimum acceptable 999_900_000
-    const { client } = buildClient(
-      Array(6).fill({ [USDC.address.toLowerCase()]: 999_900_000n })
-    )
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('999900000')
-  })
-})
-
-describe('checkBalance — no step slippage', () => {
-  const usdc = (amount: bigint) =>
-    Array(6).fill({ [USDC.address.toLowerCase()]: amount })
-
-  it('rescues a 0.014% gap with the 0.5% fallback', async () => {
-    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
-    const { client } = buildClient(usdc(999_860n))
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('999860')
-    expect(step.action.slippage).toBeUndefined()
-  })
-
-  it('rescues a gap of exactly 0.5%', async () => {
-    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
-    const { client } = buildClient(usdc(995_000n))
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('995000')
-  })
-
-  it('throws on a 0.6% gap', async () => {
-    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
-    const { client } = buildClient(usdc(994_000n))
-    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
-      code: LiFiErrorCode.BalanceError,
-      message: 'The balance is too low.',
-    })
-    expect(step.action.fromAmount).toBe('1000000')
-  })
-
-  it('treats a null slippage as missing', async () => {
-    const step = buildStep({ slippage: null as unknown as number })
-    const { client } = buildClient(usdc(999_860n))
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('999860')
-  })
-
-  it('keeps an explicit slippage of 0', async () => {
-    const step = buildStep({ slippage: 0 })
-    const { client } = buildClient(usdc(999_860n))
-    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
-      message: 'The balance is too low.',
-    })
-  })
-
-  it('ignores routeOptions.slippage', async () => {
-    const step = buildStep({ slippage: undefined })
-    const { client } = buildClient(usdc(994_000n))
-    ;(client as { config?: unknown }).config = {
-      routeOptions: { slippage: 0.03 },
-    }
-    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
-      message: 'The balance is too low.',
-    })
-  })
-
-  it('does not trim when the options forbid it', async () => {
-    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
-    const { client } = buildClient(usdc(999_860n))
-    await expect(
-      checkBalance(client, WALLET, step, { allowAmountTrim: false })
-    ).rejects.toMatchObject({ message: 'The balance is too low.' })
-    expect(step.action.fromAmount).toBe('1000000')
-  })
-
-  it('drops the quoted transaction request when it trims the amount', async () => {
-    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
-    step.transactionRequest = { data: '0xquoted' }
-    const { client } = buildClient(usdc(999_860n))
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('999860')
-    expect(step.transactionRequest).toBeUndefined()
-  })
-
-  it('keeps the transaction request when the balance covers the amount', async () => {
-    const step = buildStep({ slippage: undefined, fromAmount: '1000000' })
-    step.transactionRequest = { data: '0xquoted' }
-    const { client } = buildClient(usdc(1_000_000n))
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.transactionRequest).toEqual({ data: '0xquoted' })
-  })
-
+  // The slippage is the on-chain tolerance of the swap. Spending it here as
+  // well would let the user receive up to twice the slippage less.
   it.each([
-    ['above 1', 1.5],
-    ['NaN', Number.NaN],
-  ])('does not trim with a slippage that is %s', async (_, slippage) => {
-    const step = buildStep({ slippage, fromAmount: '1000000' })
-    const { client } = buildClient(usdc(999_860n))
-    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
-      message: 'The balance is too low.',
-    })
-    expect(step.action.fromAmount).toBe('1000000')
-  })
-
-  it('does not trim the amount to dust with a slippage of 1', async () => {
-    const step = buildStep({ slippage: 1, fromAmount: '1000000' })
-    const { client } = buildClient(usdc(1n))
-    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
-      message: 'The balance is too low.',
-    })
-    expect(step.action.fromAmount).toBe('1000000')
-  })
-
-  it('does not trim the amount to 0 with a slippage of 1', async () => {
-    const step = buildStep({ slippage: 1, fromAmount: '1000000' })
-    const { client } = buildClient(usdc(0n))
-    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
-      message: 'The balance is too low.',
-    })
-    expect(step.action.fromAmount).toBe('1000000')
-  })
-
-  it('rescues when routeOptions.slippage is 0', async () => {
-    const step = buildStep({ slippage: undefined })
-    const { client } = buildClient(usdc(999_860n))
-    ;(client as { config?: unknown }).config = { routeOptions: { slippage: 0 } }
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-  })
+    ['0.5%', 0.005],
+    ['50%', 0.5],
+    ['missing (Auto)', undefined],
+  ])(
+    'throws on a tiny shortfall with a slippage of %s and never changes the step',
+    async (_, slippage) => {
+      const step = buildStep({ slippage, fromAmount: '1000000' })
+      step.transactionRequest = { data: '0xquoted' }
+      const before = structuredClone(step)
+      const { client } = buildClient(
+        Array(6).fill({ [USDC.address.toLowerCase()]: 999_860n })
+      )
+      await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+        code: LiFiErrorCode.BalanceError,
+        message: 'The balance is too low.',
+        cause: expect.objectContaining({
+          message: expect.stringContaining(
+            'you try to transfer 1 USDC, but your wallet only holds 0.99986 USDC'
+          ),
+        }),
+      })
+      expect(step).toEqual(before)
+    }
+  )
 })
 
 describe('checkBalance — overhead tokens', () => {
@@ -356,11 +233,10 @@ describe('checkBalance — overhead tokens', () => {
     await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
   })
 
-  it('sums source amount and gas when source token is native, never trimming gas via slippage', async () => {
+  it('sums source amount and gas when source token is native', async () => {
     const step = buildStep({
       fromToken: NATIVE_ETH,
       fromAmount: '1000000000000000000', // 1 ETH
-      slippage: 0.005,
     })
     step.estimate!.gasCosts = [
       {
@@ -373,8 +249,7 @@ describe('checkBalance — overhead tokens', () => {
         token: NATIVE_ETH,
       },
     ] as any
-    // Wallet has 0.999 ETH. Even the slippage minimum
-    // (1 ETH * 0.995 + 0.005 ETH overhead = 1.0 ETH) is unmet → reject.
+    // Wallet has 0.999 ETH, below 1 ETH + 0.005 ETH gas → reject.
     const { client } = buildClient(
       Array(6).fill({
         [NATIVE_ETH.address.toLowerCase()]: 999_000_000_000_000_000n,
@@ -384,34 +259,6 @@ describe('checkBalance — overhead tokens', () => {
       code: LiFiErrorCode.BalanceError,
       message: 'The balance is too low.',
     })
-  })
-
-  it('on slippage adjustment, preserves the gas overhead reserve', async () => {
-    const step = buildStep({
-      fromToken: NATIVE_ETH,
-      fromAmount: '1000000000000000000', // 1 ETH
-      slippage: 0.01,
-    })
-    step.estimate!.gasCosts = [
-      {
-        type: 'SUM',
-        price: '0',
-        estimate: '0',
-        limit: '0',
-        amount: '5000000000000000', // 0.005 ETH overhead
-        amountUSD: '0',
-        token: NATIVE_ETH,
-      },
-    ] as any
-    // Wallet 0.999 ETH. minAcceptable = 1 * 0.99 + 0.005 = 0.995 ETH ≤ 0.999.
-    // Trim source to 0.999 - 0.005 = 0.994 ETH.
-    const { client } = buildClient(
-      Array(6).fill({
-        [NATIVE_ETH.address.toLowerCase()]: 999_000_000_000_000_000n,
-      })
-    )
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('994000000000000000')
   })
 
   it('does not double-count fees flagged as included', async () => {
@@ -482,8 +329,8 @@ describe('checkBalance — overhead tokens', () => {
     expect(tokensQueried).toEqual([USDC.address])
   })
 
-  it('never trims overhead tokens by slippage on the final attempt', async () => {
-    const step = buildStep({ slippage: 0.5 }) // very generous slippage
+  it('throws when only an overhead token is short', async () => {
+    const step = buildStep()
     step.estimate!.gasCosts = [
       {
         type: 'SUM',
@@ -595,13 +442,10 @@ describe('checkBalance — smart-contract wallet / relayed (walletPaysGas=false)
     ).resolves.toBeUndefined()
   })
 
-  it('slippage rescue trims source down to (have - feePart) — gas no longer reserved', async () => {
-    // Without walletPaysGas=false the rescue would reserve gas+fee; with
-    // it, only the fee is reserved, leaving more headroom to trim.
+  it('needs only the source amount and the fee, not the gas', async () => {
     const step = buildStep({
       fromToken: NATIVE_ETH,
       fromAmount: '1000000000000000000', // 1 ETH
-      slippage: 0.01,
     })
     step.estimate!.gasCosts = [
       {
@@ -625,17 +469,16 @@ describe('checkBalance — smart-contract wallet / relayed (walletPaysGas=false)
         included: false,
       },
     ]
-    // Wallet 0.999 ETH. minAcceptable = 1 * 0.99 + 0.002 = 0.992 ≤ 0.999.
-    // Trim source to 0.999 - 0.002 = 0.997 ETH (would be 0.994 with gas).
+    // Wallet 1.002 ETH = 1 ETH + 0.002 ETH fee; the 0.005 ETH gas is not needed.
     const { client } = buildClient(
       Array(6).fill({
-        [NATIVE_ETH.address.toLowerCase()]: 999_000_000_000_000_000n,
+        [NATIVE_ETH.address.toLowerCase()]: 1_002_000_000_000_000_000n,
       })
     )
     await expect(
       checkBalance(client, WALLET, step, { walletPaysGas: false })
     ).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('997000000000000000')
+    expect(step.action.fromAmount).toBe('1000000000000000000')
   })
 
   it('default (walletPaysGas omitted) preserves the strict gas check — no behavior change for EOA executions', async () => {
@@ -779,14 +622,20 @@ describe('checkBalance — RPC failures', () => {
     expect(getBalance).toHaveBeenCalledTimes(2)
   })
 
-  it('decides from the last good read when later reads miss the balance', async () => {
-    const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
+  it('reports the shortfall of the last good read when later reads miss the balance', async () => {
     const { client } = buildClient([
       { [USDC.address.toLowerCase()]: 996_000n },
       ...Array(5).fill({ [USDC.address.toLowerCase()]: undefined }),
     ])
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('996000')
+    await expect(
+      checkBalance(client, WALLET, buildStep())
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'The balance is too low.',
+      cause: expect.objectContaining({
+        message: expect.stringContaining('only holds 0.996 USDC'),
+      }),
+    })
   })
 })
 
@@ -840,18 +689,16 @@ describe('checkBalance — overall timeout', () => {
     }
   })
 
-  it('rescues before the time limit when each read takes 4 s', async () => {
+  it('passes when a read takes 4 s and the balance covers the step', async () => {
     useFakeClock()
-    const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
     const { client, getBalance } = buildClient([])
-    readsTaking(getBalance, 4_000, 996_000n)
+    readsTaking(getBalance, 4_000, 1_000_000n)
     const checked = expect(
-      checkBalance(client, WALLET, step)
+      checkBalance(client, WALLET, buildStep())
     ).resolves.toBeUndefined()
-    await vi.advanceTimersByTimeAsync(15_000)
+    await vi.advanceTimersByTimeAsync(4_000)
     await checked
-    expect(step.action.fromAmount).toBe('996000')
-    expect(getBalance).toHaveBeenCalledTimes(4)
+    expect(getBalance).toHaveBeenCalledTimes(1)
   })
 
   it('reports the real shortfall when each read takes 4 s', async () => {
@@ -906,7 +753,8 @@ describe('checkBalance — overall timeout', () => {
 
   it('decides from the last good read when the final read hangs, and ignores the late read', async () => {
     useFakeClock()
-    const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
+    const step = buildStep()
+    const before = structuredClone(step)
     const { client, getBalance } = buildClient([])
     const balanceOf =
       (amount: bigint) =>
@@ -919,20 +767,24 @@ describe('checkBalance — overall timeout', () => {
       }
       // The final read hangs past the time limit.
       return new Promise<TokenAmount[]>((resolve) => {
-        releaseFinalRead = () => resolve(balanceOf(997_000n)(tokens))
+        releaseFinalRead = () => resolve(balanceOf(1_000_000n)(tokens))
       })
     })
 
     const checked = expect(
       checkBalance(client, WALLET, step)
-    ).resolves.toBeUndefined()
+    ).rejects.toMatchObject({
+      message: 'The balance is too low.',
+      cause: expect.objectContaining({
+        message: expect.stringContaining('only holds 0.996 USDC'),
+      }),
+    })
     await vi.advanceTimersByTimeAsync(15_000)
     await checked
-    expect(step.action.fromAmount).toBe('996000')
 
     releaseFinalRead()
     await vi.advanceTimersByTimeAsync(0)
-    expect(step.action.fromAmount).toBe('996000')
+    expect(step).toEqual(before)
     expect(getBalance).toHaveBeenCalledTimes(6)
   })
 })

@@ -59,9 +59,7 @@ export const resolveApprovalRequirement = (
   // is a ceiling, so only the amount actually pulled is ever spent.
   //
   // Read off `estimate`, the same object `skipApproval` and `approvalAddress`
-  // come from. `CheckBalanceTask`'s slippage rescue revises `action.fromAmount`
-  // on the first leg only, and only downward, so the estimate stays an upper
-  // bound either way.
+  // come from.
   const amount = BigInt(includedStep.estimate.fromAmount)
 
   return {
