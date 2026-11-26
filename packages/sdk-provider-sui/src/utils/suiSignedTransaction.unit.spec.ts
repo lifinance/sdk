@@ -1,8 +1,9 @@
+import type { ClientWithCoreApi } from '@mysten/sui/client'
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 import { TransactionDataBuilder } from '@mysten/sui/transactions'
 import { toBase64 } from '@mysten/sui/utils'
 import { isValidTransactionSignature } from '@mysten/sui/verify'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   parseSuiSignedTransaction,
   serializeSuiSignedTransaction,
@@ -15,13 +16,24 @@ import {
   SIGNATURE,
 } from './suiSignedTransaction.unit.mock.js'
 
-vi.mock('@mysten/sui/verify', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@mysten/sui/verify')>()
-  return {
-    ...actual,
-    isValidTransactionSignature: vi.fn(actual.isValidTransactionSignature),
-  }
-})
+// A full node checks a plain key's signature the same way as this local
+// check. It also accepts zkLogin and address-alias signatures, which the
+// tests that need them stub.
+const verifySignature = vi.fn(
+  async (options: {
+    transaction: Uint8Array
+    signature: string
+    address: string
+    signal?: AbortSignal
+  }) => ({
+    valid: await isValidTransactionSignature(
+      options.transaction,
+      options.signature,
+      { address: options.address, offline: true }
+    ),
+  })
+)
+const node = { core: { verifySignature } } as unknown as ClientWithCoreApi
 
 // 26 characters is not a multiple of 4, so `atob` rejects the `=`.
 const NOT_BASE64_SIGNATURE = 'AFakeSerializedSignature=='
@@ -121,10 +133,21 @@ describe('parseSuiSignedTransaction', () => {
 })
 
 describe('verifySuiSignedTransaction', () => {
-  it('accepts the signature of the sender over the stored bytes', async () => {
+  beforeEach(() => {
+    verifySignature.mockClear()
+  })
+
+  it('accepts the signature of the sender over the stored bytes, checked on the node', async () => {
     const transaction = readBack(SENDER_BYTES, SENDER_SIGNATURE)
 
-    expect(await verifySuiSignedTransaction(transaction)).toBe(true)
+    expect(await verifySuiSignedTransaction(transaction, node)).toBe(true)
+    expect(verifySignature).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transaction: SENDER_BYTES,
+        signature: SENDER_SIGNATURE,
+        address: SENDER.toSuiAddress(),
+      })
+    )
   })
 
   it('rejects stored bytes with one flipped byte that still parse', async () => {
@@ -137,7 +160,7 @@ describe('verifySuiSignedTransaction', () => {
     )
     const transaction = readBack(tampered, SENDER_SIGNATURE)
 
-    expect(await verifySuiSignedTransaction(transaction)).toBe(false)
+    expect(await verifySuiSignedTransaction(transaction, node)).toBe(false)
   })
 
   it('rejects a valid signature from a key that is not the sender', async () => {
@@ -145,20 +168,49 @@ describe('verifySuiSignedTransaction', () => {
     const { signature } = await other.signTransaction(SENDER_BYTES)
     const transaction = readBack(SENDER_BYTES, signature)
 
-    expect(await verifySuiSignedTransaction(transaction)).toBe(false)
+    expect(await verifySuiSignedTransaction(transaction, node)).toBe(false)
+  })
+
+  it('accepts a signature that only a node can verify, such as one from an address alias of the sender', async () => {
+    const alias = Ed25519Keypair.fromSecretKey(new Uint8Array(32).fill(9))
+    const { signature } = await alias.signTransaction(SENDER_BYTES)
+    const transaction = readBack(SENDER_BYTES, signature)
+    // A local check rejects it: the key is not the sender's own key.
+    expect(
+      await isValidTransactionSignature(SENDER_BYTES, signature, {
+        address: SENDER.toSuiAddress(),
+        offline: true,
+      })
+    ).toBe(false)
+    verifySignature.mockResolvedValueOnce({ valid: true })
+
+    expect(await verifySuiSignedTransaction(transaction, node)).toBe(true)
   })
 
   it('rejects a malformed signature', async () => {
     const transaction = readBack(SENDER_BYTES, SIGNATURE)
 
-    expect(await verifySuiSignedTransaction(transaction)).toBe(false)
+    expect(await verifySuiSignedTransaction(transaction, node)).toBe(false)
   })
 
-  it('fails, and does not resolve false, when the verification cannot run', async () => {
-    const error = new Error('A Sui Client is required')
-    vi.mocked(isValidTransactionSignature).mockRejectedValueOnce(error)
+  it('fails, and does not resolve false, when the node cannot verify', async () => {
+    const error = new Error('The node cannot check address aliases')
+    verifySignature.mockRejectedValueOnce(error)
     const transaction = readBack(SENDER_BYTES, SENDER_SIGNATURE)
 
-    await expect(verifySuiSignedTransaction(transaction)).rejects.toBe(error)
+    await expect(verifySuiSignedTransaction(transaction, node)).rejects.toBe(
+      error
+    )
+  })
+
+  it('passes the abort signal to the node', async () => {
+    const controller = new AbortController()
+    const transaction = readBack(SENDER_BYTES, SENDER_SIGNATURE)
+
+    await verifySuiSignedTransaction(transaction, node, controller.signal)
+
+    expect(verifySignature).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: controller.signal })
+    )
   })
 })

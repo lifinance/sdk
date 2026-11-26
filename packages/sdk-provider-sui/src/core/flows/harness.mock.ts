@@ -81,7 +81,10 @@ import {
   TransactionDataBuilder,
 } from '@mysten/sui/transactions'
 import { fromBase58, fromBase64, toBase64 } from '@mysten/sui/utils'
-import { verifyTransactionSignature } from '@mysten/sui/verify'
+import {
+  isValidTransactionSignature,
+  verifyTransactionSignature,
+} from '@mysten/sui/verify'
 import { type Mock, vi } from 'vitest'
 import { SuiProvider } from '../../SuiProvider.js'
 
@@ -609,6 +612,21 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
   )
 
   const grpcCore = recording('grpc.', SUI_RPC_URL, {
+    // A full node checks a plain key's signature the same way as this local
+    // check.
+    async verifySignature(options: {
+      transaction: Uint8Array
+      signature: string
+      address: string
+    }) {
+      return {
+        valid: await isValidTransactionSignature(
+          options.transaction,
+          options.signature,
+          { address: options.address, offline: true }
+        ),
+      }
+    },
     // Every wallet holds SUI_BALANCE of SUI and nothing else.
     async listBalances(): Promise<SuiClientTypes.ListBalancesResponse> {
       return {

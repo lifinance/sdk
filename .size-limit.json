@@ -50,7 +50,7 @@
     "ignore": [
       "@lifi/sdk"
     ],
-    "limit": "126 kB"
+    "limit": "94 kB"
   },
   {
     "name": "Providers · tron",

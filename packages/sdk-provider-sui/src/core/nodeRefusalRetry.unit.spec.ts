@@ -330,6 +330,7 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
     // re-execute exactly the stored bytes, then wait by digest.
     expect(methodsByClient()).toEqual([
       'grpc.getTransaction',
+      'grpc.verifySignature',
       'grpc.executeTransaction',
       'grpc.waitForTransaction',
     ])
@@ -377,6 +378,7 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
     // no status API check, and the task rethrows the refusal.
     expect(methodsByClient()).toEqual([
       'grpc.getTransaction',
+      'grpc.verifySignature',
       'grpc.executeTransaction',
       'grpc.getTransaction',
     ])
@@ -424,6 +426,7 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
     // unknown.
     expect(methodsByClient()).toEqual([
       'grpc.getTransaction',
+      'grpc.verifySignature',
       'grpc.executeTransaction',
     ])
     expect(requests).toEqual([signed])
@@ -477,6 +480,7 @@ describe('Sui "Try again" after a node refusal, past the resend age cap', () => 
     // and both canaries.
     expect(methodsByClient()).toEqual([
       'grpc.getTransaction',
+      'grpc.verifySignature',
       'grpc.ledgerService.getCheckpoint',
       'grpc.ledgerService.getCheckpoint',
       'grpc.ledgerService.getCheckpoint',
@@ -574,6 +578,7 @@ describe('Sui "Try again" after a node refusal, past the resend age cap', () => 
     expect(network.executed).toEqual([])
     expect(methodsByClient()).toEqual([
       'grpc.getTransaction',
+      'grpc.verifySignature',
       'grpc.ledgerService.getCheckpoint',
       'grpc.waitForTransaction',
     ])

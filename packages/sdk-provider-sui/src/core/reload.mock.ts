@@ -49,6 +49,7 @@ import {
   TransactionDataBuilder,
 } from '@mysten/sui/transactions'
 import { toBase58, toBase64 } from '@mysten/sui/utils'
+import { isValidTransactionSignature } from '@mysten/sui/verify'
 import { type Mock, vi } from 'vitest'
 import { SuiProvider } from '../SuiProvider.js'
 
@@ -370,6 +371,21 @@ export const createFakeSuiNetwork = (): FakeSuiNetwork => {
   const core = recording('', {
     executeTransaction: execute,
     getTransaction,
+    // A full node checks a plain key's signature the same way as this local
+    // check.
+    async verifySignature(options: {
+      transaction: Uint8Array
+      signature: string
+      address: string
+    }) {
+      return {
+        valid: await isValidTransactionSignature(
+          options.transaction,
+          options.signature,
+          { address: options.address, offline: true }
+        ),
+      }
+    },
     async waitForTransaction(options: {
       digest?: string
       result?: Record<string, { digest: string }>
