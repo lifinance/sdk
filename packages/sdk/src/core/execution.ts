@@ -112,11 +112,16 @@ const executeSteps = async (
     }
 
     // Update step fromAmount using output of the previous step execution. In the future this should be handled by calling `updateRoute`
-    if (previousStep?.execution?.toAmount) {
-      step.action.fromAmount = previousStep.execution.toAmount
+    const receivedAmount = previousStep?.execution?.toAmount
+    if (receivedAmount) {
+      // A transaction request is built for one amount. Without one, the
+      // prepare task quotes the step again for the amount that arrived.
+      if (step.action.fromAmount !== receivedAmount) {
+        step.transactionRequest = undefined
+      }
+      step.action.fromAmount = receivedAmount
       if (step.includedSteps?.length) {
-        step.includedSteps[0].action.fromAmount =
-          previousStep.execution.toAmount
+        step.includedSteps[0].action.fromAmount = receivedAmount
       }
     }
 

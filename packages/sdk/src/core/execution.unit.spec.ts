@@ -494,3 +494,82 @@ describe('a late transaction write after a newer execution ended', () => {
     expect(oldHook).not.toHaveBeenCalled()
   })
 })
+
+describe('a later step', () => {
+  const routeId = 'route-later-step'
+
+  afterEach(() => {
+    executionState.delete(routeId)
+  })
+
+  /** Runs a route whose first step is done and received `receivedAmount`. */
+  const runSecondStep = async (
+    receivedAmount: string
+  ): Promise<Partial<LiFiStepExtended>> => {
+    let seen: Partial<LiFiStepExtended> = {}
+    const executor: StepExecutor = {
+      allowUserInteraction: true,
+      allowExecution: true,
+      setInteraction: (): void => {},
+      executeStep: async (
+        _client: SDKClient,
+        step: LiFiStepExtended
+      ): Promise<LiFiStepExtended> => {
+        seen = structuredClone({
+          action: step.action,
+          includedSteps: step.includedSteps,
+          transactionRequest: step.transactionRequest,
+        })
+        step.execution = { startedAt: 0, status: 'DONE', actions: [] }
+        return step
+      },
+    }
+    const client = {
+      providers: [
+        {
+          isAddress: (): boolean => true,
+          getStepExecutor: async (): Promise<StepExecutor> => executor,
+        },
+      ],
+    } as unknown as SDKClient
+    const route = {
+      id: routeId,
+      steps: [
+        {
+          id: 'step-1',
+          action: { fromAddress: '0xabc', fromAmount: '500' },
+          execution: {
+            startedAt: 0,
+            status: 'DONE',
+            actions: [],
+            toAmount: receivedAmount,
+          },
+        },
+        {
+          id: 'step-2',
+          action: { fromAddress: '0xabc', fromAmount: '1000' },
+          includedSteps: [{ action: { fromAmount: '1000' } }],
+          transactionRequest: { data: '0xquoted' },
+        },
+      ],
+    } as unknown as RouteExtended
+
+    await executeRoute(client, route)
+    return seen
+  }
+
+  it('gets the amount that arrived and no transaction request built for another amount', async () => {
+    const seen = await runSecondStep('999')
+
+    expect(seen.action?.fromAmount).toBe('999')
+    expect(seen.includedSteps?.[0].action.fromAmount).toBe('999')
+    expect(seen.transactionRequest).toBeUndefined()
+  })
+
+  it('keeps the transaction request when the amount that arrived is the same', async () => {
+    const seen = await runSecondStep('1000')
+
+    expect(seen.action?.fromAmount).toBe('1000')
+    expect(seen.transactionRequest).toEqual({ data: '0xquoted' })
+  })
+})
