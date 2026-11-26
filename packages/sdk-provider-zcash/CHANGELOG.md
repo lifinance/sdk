@@ -1,5 +1,12 @@
 # @lifi/sdk-provider-zcash
 
+## 4.0.4
+
+### Patch Changes
+
+- Updated dependencies [[`09fa8a3`](https://github.com/lifinance/sdk/commit/09fa8a35f30fe67f136cd6d6c7bd32c23f1b8c1f)]:
+  - @lifi/sdk@4.14.0
+
 ## 4.0.3
 
 ### Patch Changes
