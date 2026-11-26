@@ -156,37 +156,33 @@ describe('checkBalance — source token', () => {
     expect(getBalance).toHaveBeenCalledTimes(3)
   })
 
-  it('adjusts source amount within slippage on the final attempt', async () => {
-    const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
-    // 0.5% slippage allows 995_000 minimum
-    const { client } = buildClient(
-      Array(6).fill({ [USDC.address.toLowerCase()]: 996_000n })
-    )
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('996000')
-  })
-
-  it('does not adjust when below slippage tolerance', async () => {
-    const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
-    const { client } = buildClient(
-      Array(6).fill({ [USDC.address.toLowerCase()]: 990_000n })
-    )
-    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
-      code: LiFiErrorCode.BalanceError,
-      message: 'The balance is too low.',
-    })
-    expect(step.action.fromAmount).toBe('1000000')
-  })
-
-  it('honours slippage to 1bp precision', async () => {
-    const step = buildStep({ slippage: 0.0001, fromAmount: '1000000000' })
-    // 1bp slippage → minimum acceptable 999_900_000
-    const { client } = buildClient(
-      Array(6).fill({ [USDC.address.toLowerCase()]: 999_900_000n })
-    )
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('999900000')
-  })
+  // The slippage is the on-chain tolerance of the swap. Spending it here as
+  // well would let the user receive up to twice the slippage less.
+  it.each([
+    ['0.5%', 0.005],
+    ['50%', 0.5],
+    ['missing (Auto)', undefined],
+  ])(
+    'throws on a tiny shortfall with a slippage of %s and never changes the step',
+    async (_, slippage) => {
+      const step = buildStep({ slippage, fromAmount: '1000000' })
+      step.transactionRequest = { data: '0xquoted' }
+      const before = structuredClone(step)
+      const { client } = buildClient(
+        Array(6).fill({ [USDC.address.toLowerCase()]: 999_860n })
+      )
+      await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+        code: LiFiErrorCode.BalanceError,
+        message: 'The balance is too low.',
+        cause: expect.objectContaining({
+          message: expect.stringContaining(
+            'you try to transfer 1 USDC, but your wallet only holds 0.99986 USDC'
+          ),
+        }),
+      })
+      expect(step).toEqual(before)
+    }
+  )
 })
 
 describe('checkBalance — overhead tokens', () => {
@@ -237,11 +233,10 @@ describe('checkBalance — overhead tokens', () => {
     await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
   })
 
-  it('sums source amount and gas when source token is native, never trimming gas via slippage', async () => {
+  it('sums source amount and gas when source token is native', async () => {
     const step = buildStep({
       fromToken: NATIVE_ETH,
       fromAmount: '1000000000000000000', // 1 ETH
-      slippage: 0.005,
     })
     step.estimate!.gasCosts = [
       {
@@ -254,8 +249,7 @@ describe('checkBalance — overhead tokens', () => {
         token: NATIVE_ETH,
       },
     ] as any
-    // Wallet has 0.999 ETH. Even the slippage minimum
-    // (1 ETH * 0.995 + 0.005 ETH overhead = 1.0 ETH) is unmet → reject.
+    // Wallet has 0.999 ETH, below 1 ETH + 0.005 ETH gas → reject.
     const { client } = buildClient(
       Array(6).fill({
         [NATIVE_ETH.address.toLowerCase()]: 999_000_000_000_000_000n,
@@ -265,34 +259,6 @@ describe('checkBalance — overhead tokens', () => {
       code: LiFiErrorCode.BalanceError,
       message: 'The balance is too low.',
     })
-  })
-
-  it('on slippage adjustment, preserves the gas overhead reserve', async () => {
-    const step = buildStep({
-      fromToken: NATIVE_ETH,
-      fromAmount: '1000000000000000000', // 1 ETH
-      slippage: 0.01,
-    })
-    step.estimate!.gasCosts = [
-      {
-        type: 'SUM',
-        price: '0',
-        estimate: '0',
-        limit: '0',
-        amount: '5000000000000000', // 0.005 ETH overhead
-        amountUSD: '0',
-        token: NATIVE_ETH,
-      },
-    ] as any
-    // Wallet 0.999 ETH. minAcceptable = 1 * 0.99 + 0.005 = 0.995 ETH ≤ 0.999.
-    // Trim source to 0.999 - 0.005 = 0.994 ETH.
-    const { client } = buildClient(
-      Array(6).fill({
-        [NATIVE_ETH.address.toLowerCase()]: 999_000_000_000_000_000n,
-      })
-    )
-    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('994000000000000000')
   })
 
   it('does not double-count fees flagged as included', async () => {
@@ -363,8 +329,8 @@ describe('checkBalance — overhead tokens', () => {
     expect(tokensQueried).toEqual([USDC.address])
   })
 
-  it('never trims overhead tokens by slippage on the final attempt', async () => {
-    const step = buildStep({ slippage: 0.5 }) // very generous slippage
+  it('throws when only an overhead token is short', async () => {
+    const step = buildStep()
     step.estimate!.gasCosts = [
       {
         type: 'SUM',
@@ -476,13 +442,10 @@ describe('checkBalance — smart-contract wallet / relayed (walletPaysGas=false)
     ).resolves.toBeUndefined()
   })
 
-  it('slippage rescue trims source down to (have - feePart) — gas no longer reserved', async () => {
-    // Without walletPaysGas=false the rescue would reserve gas+fee; with
-    // it, only the fee is reserved, leaving more headroom to trim.
+  it('needs only the source amount and the fee, not the gas', async () => {
     const step = buildStep({
       fromToken: NATIVE_ETH,
       fromAmount: '1000000000000000000', // 1 ETH
-      slippage: 0.01,
     })
     step.estimate!.gasCosts = [
       {
@@ -506,17 +469,16 @@ describe('checkBalance — smart-contract wallet / relayed (walletPaysGas=false)
         included: false,
       },
     ]
-    // Wallet 0.999 ETH. minAcceptable = 1 * 0.99 + 0.002 = 0.992 ≤ 0.999.
-    // Trim source to 0.999 - 0.002 = 0.997 ETH (would be 0.994 with gas).
+    // Wallet 1.002 ETH = 1 ETH + 0.002 ETH fee; the 0.005 ETH gas is not needed.
     const { client } = buildClient(
       Array(6).fill({
-        [NATIVE_ETH.address.toLowerCase()]: 999_000_000_000_000_000n,
+        [NATIVE_ETH.address.toLowerCase()]: 1_002_000_000_000_000_000n,
       })
     )
     await expect(
       checkBalance(client, WALLET, step, { walletPaysGas: false })
     ).resolves.toBeUndefined()
-    expect(step.action.fromAmount).toBe('997000000000000000')
+    expect(step.action.fromAmount).toBe('1000000000000000000')
   })
 
   it('default (walletPaysGas omitted) preserves the strict gas check — no behavior change for EOA executions', async () => {
@@ -659,14 +621,93 @@ describe('checkBalance — RPC failures', () => {
     ).resolves.toBeUndefined()
     expect(getBalance).toHaveBeenCalledTimes(2)
   })
+
+  it('reports the shortfall of the last good read when later reads miss the balance', async () => {
+    const { client } = buildClient([
+      { [USDC.address.toLowerCase()]: 996_000n },
+      ...Array(5).fill({ [USDC.address.toLowerCase()]: undefined }),
+    ])
+    await expect(
+      checkBalance(client, WALLET, buildStep())
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'The balance is too low.',
+      cause: expect.objectContaining({
+        message: expect.stringContaining('only holds 0.996 USDC'),
+      }),
+    })
+  })
+})
+
+describe('checkBalance — a newer read that covers an older shortfall', () => {
+  // Read 1 is before the funds arrived. The later reads see the funds, but
+  // not the gas token. The old shortfall is gone, so the check must not
+  // report it: the real problem is the gas balance it cannot read.
+  it('reports the unreadable token, not a shortfall that a newer read covers', async () => {
+    const step = buildStep()
+    step.estimate!.gasCosts = [
+      {
+        type: 'SUM',
+        price: '0',
+        estimate: '0',
+        limit: '0',
+        amount: '5000000000000000',
+        amountUSD: '0',
+        token: NATIVE_ETH,
+      },
+    ] as any
+    const { client } = buildClient([
+      {
+        [USDC.address.toLowerCase()]: 0n,
+        [NATIVE_ETH.address.toLowerCase()]: 1_000_000_000_000_000_000n,
+      },
+      ...Array(5).fill({
+        [USDC.address.toLowerCase()]: 1_000_000n,
+        [NATIVE_ETH.address.toLowerCase()]: undefined,
+      }),
+    ])
+    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'Could not read wallet balance.',
+      cause: expect.objectContaining({
+        message: 'Could not read balance for: ETH.',
+      }),
+    })
+  })
 })
 
 describe('checkBalance — overall timeout', () => {
+  const readsTaking = (
+    getBalance: ReturnType<typeof vi.fn>,
+    ms: number,
+    amount: bigint
+  ) =>
+    getBalance.mockImplementation(
+      (_client, _wallet, tokens: Token[]) =>
+        new Promise<TokenAmount[]>((resolve) =>
+          setTimeout(
+            () => resolve(tokens.map((token) => ({ ...token, amount }))),
+            ms
+          )
+        )
+    )
+
+  // Fake timers, with a backoff sleep that takes its real time on them, so
+  // the time-limit tests count the backoff like production does.
+  const useFakeClock = () => {
+    vi.useFakeTimers()
+    vi.mocked(sleep).mockImplementation(
+      (ms: number) =>
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))
+    )
+  }
+
   afterEach(() => {
+    vi.mocked(sleep).mockImplementation(() => Promise.resolve(null))
     vi.useRealTimers()
   })
 
-  it('passes a signal to every backoff sleep and aborts it when it settles', async () => {
+  it('backs off after a failed read and after a low balance', async () => {
     const { client } = buildClient([
       'reject',
       { [USDC.address.toLowerCase()]: 0n },
@@ -678,44 +719,124 @@ describe('checkBalance — overall timeout', () => {
     ).resolves.toBeUndefined()
 
     // One sleep after the failed read, one after the low balance.
-    const calls = vi.mocked(sleep).mock.calls
-    expect(calls).toHaveLength(2)
-    for (const [, options] of calls) {
-      expect(options?.signal?.aborted).toBe(true)
-    }
+    expect(vi.mocked(sleep).mock.calls.map(([ms]) => ms)).toEqual([150, 300])
   })
 
-  it('does not change the step after the timeout has rejected', async () => {
-    vi.useFakeTimers()
-    const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
+  // When the first RPC URL hangs, viem's fallback transport moves to the next
+  // URL only after its 10 s http timeout. The time limit must leave room for
+  // that read.
+  it('passes when the first RPC URL hangs and the next URL answers after 10 s', async () => {
+    useFakeClock()
     const { client, getBalance } = buildClient([])
-    // Inside slippage: the final attempt trims `fromAmount` to this balance.
-    const withinSlippage = (tokens: Token[]): TokenAmount[] =>
-      tokens.map((token) => ({ ...token, amount: 996_000n }))
+    readsTaking(getBalance, 10_050, 1_000_000n)
+    const checked = expect(
+      checkBalance(client, WALLET, buildStep())
+    ).resolves.toBeUndefined()
+    await vi.advanceTimersByTimeAsync(10_050)
+    await checked
+    expect(getBalance).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports the real shortfall when the first RPC URL hangs', async () => {
+    useFakeClock()
+    const { client, getBalance } = buildClient([])
+    readsTaking(getBalance, 10_050, 980_000n)
+    const checked = expect(
+      checkBalance(client, WALLET, buildStep())
+    ).rejects.toMatchObject({
+      message: 'The balance is too low.',
+      cause: expect.objectContaining({
+        message: expect.stringContaining('only holds 0.98 USDC'),
+      }),
+    })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await checked
+  })
+
+  it('reports the real shortfall when each read takes 4 s', async () => {
+    useFakeClock()
+    const { client, getBalance } = buildClient([])
+    readsTaking(getBalance, 4_000, 980_000n)
+    const checked = expect(
+      checkBalance(client, WALLET, buildStep())
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'The balance is too low.',
+      cause: expect.objectContaining({
+        message: expect.stringContaining('only holds 0.98 USDC'),
+      }),
+    })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await checked
+  })
+
+  it('does not start a backoff that ends after the time limit', async () => {
+    useFakeClock()
+    const { client, getBalance } = buildClient([])
+    readsTaking(getBalance, 7_300, 980_000n)
+    const checked = expect(
+      checkBalance(client, WALLET, buildStep())
+    ).rejects.toMatchObject({
+      message: 'The balance is too low.',
+    })
+    // Read 1 ends at 7.3 s and the backoff at 7.45 s. Read 2 ends at 14.75 s.
+    // The next backoff (300 ms) would end after 15 s.
+    await vi.advanceTimersByTimeAsync(14_750)
+    await checked
+    expect(getBalance).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(sleep)).toHaveBeenCalledTimes(1)
+  })
+
+  it('throws "Could not read wallet balance" with a cause when no read finishes in time', async () => {
+    useFakeClock()
+    const { client, getBalance } = buildClient([])
+    getBalance.mockImplementation(() => new Promise<TokenAmount[]>(() => {}))
+    const checked = expect(
+      checkBalance(client, WALLET, buildStep())
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'Could not read wallet balance.',
+      cause: expect.objectContaining({ message: 'Balance read timed out.' }),
+    })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await checked
+    expect(getBalance).toHaveBeenCalledTimes(1)
+  })
+
+  it('decides from the last good read when the final read hangs, and ignores the late read', async () => {
+    useFakeClock()
+    const step = buildStep()
+    const before = structuredClone(step)
+    const { client, getBalance } = buildClient([])
+    const balanceOf =
+      (amount: bigint) =>
+      (tokens: Token[]): TokenAmount[] =>
+        tokens.map((token) => ({ ...token, amount }))
     let releaseFinalRead!: () => void
     getBalance.mockImplementation(async (_client, _wallet, tokens: Token[]) => {
       if (getBalance.mock.calls.length < 6) {
-        return withinSlippage(tokens)
+        return balanceOf(996_000n)(tokens)
       }
-      // The final read hangs past the overall timeout.
+      // The final read hangs past the time limit.
       return new Promise<TokenAmount[]>((resolve) => {
-        releaseFinalRead = () => resolve(withinSlippage(tokens))
+        releaseFinalRead = () => resolve(balanceOf(1_000_000n)(tokens))
       })
     })
 
     const checked = expect(
       checkBalance(client, WALLET, step)
     ).rejects.toMatchObject({
-      code: LiFiErrorCode.BalanceError,
-      message: 'Could not read wallet balance.',
+      message: 'The balance is too low.',
+      cause: expect.objectContaining({
+        message: expect.stringContaining('only holds 0.996 USDC'),
+      }),
     })
-    await vi.advanceTimersByTimeAsync(10_000)
+    await vi.advanceTimersByTimeAsync(15_000)
     await checked
 
     releaseFinalRead()
     await vi.advanceTimersByTimeAsync(0)
-
+    expect(step).toEqual(before)
     expect(getBalance).toHaveBeenCalledTimes(6)
-    expect(step.action.fromAmount).toBe('1000000')
   })
 })
