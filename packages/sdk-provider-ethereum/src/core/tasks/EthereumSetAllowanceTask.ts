@@ -14,7 +14,10 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    return !context.hasMatchingPermit && !context.hasSufficientAllowance
+    return (
+      !context.hasMatchingPermit &&
+      (!context.hasSufficientAllowance || !!context.needsAllowanceTopUp)
+    )
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
