@@ -13,12 +13,17 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, hasMatchingPermit, hasSufficientAllowance, hasAllowance } =
-      context
+    const {
+      step,
+      hasMatchingPermit,
+      hasSufficientAllowance,
+      needsAllowanceTopUp,
+      hasAllowance,
+    } = context
 
     return (
       !hasMatchingPermit &&
-      !hasSufficientAllowance &&
+      (!hasSufficientAllowance || !!needsAllowanceTopUp) &&
       !!step.estimate.approvalReset &&
       !!hasAllowance
     )

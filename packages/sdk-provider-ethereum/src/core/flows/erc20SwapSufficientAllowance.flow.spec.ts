@@ -154,15 +154,27 @@ describe('an ERC-20 same-chain swap with enough allowance', () => {
 describe('an ERC-20 swap whose estimate asks for a larger approvalAmount', () => {
   const APPROVAL_AMOUNT = 3n * BigInt(FROM_AMOUNT)
 
-  const buildScenario = (): Scenario => {
+  const buildScenario = (
+    options: {
+      chain?: ExtendedChain
+      approvalAmount?: bigint
+      allowance?: bigint
+      skipPermit?: boolean
+      approvalReset?: boolean
+    } = {}
+  ): Scenario => {
     const step = buildStep({
       transactionRequest: buildTransactionRequest({ data: SWAP_CALLDATA }),
+      skipPermit: options.skipPermit,
+      approvalReset: options.approvalReset,
     })
-    Object.assign(step.estimate, { approvalAmount: APPROVAL_AMOUNT.toString() })
+    Object.assign(step.estimate, {
+      approvalAmount: (options.approvalAmount ?? APPROVAL_AMOUNT).toString(),
+    })
     return createScenario({
-      chain: CLASSIC_CHAIN,
+      chain: options.chain ?? CLASSIC_CHAIN,
       step,
-      allowance: BigInt(FROM_AMOUNT),
+      allowance: options.allowance ?? BigInt(FROM_AMOUNT),
     })
   }
 
@@ -178,5 +190,48 @@ describe('an ERC-20 swap whose estimate asks for a larger approvalAmount', () =>
       amount: APPROVAL_AMOUNT,
     })
     expect(swap).toMatchObject({ to: APPROVAL_ADDRESS, data: SWAP_CALLDATA })
+  })
+
+  it('does not approve again when an unlimited approvalAmount meets a uint96 allowance', async () => {
+    const scenario = buildScenario({
+      approvalAmount: 2n ** 256n - 1n,
+      allowance: 2n ** 96n - 1n,
+    })
+
+    await scenario.run()
+
+    const sent = scenario.events('sendTransaction')
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({ to: APPROVAL_ADDRESS, data: SWAP_CALLDATA })
+  })
+
+  it('tops up the approval for a limit-order step on a chain with Permit2 and the Permit2Proxy', async () => {
+    const scenario = buildScenario({ chain: buildChain(), skipPermit: true })
+
+    await scenario.run()
+
+    expect(scenario.events('signTypedData')).toEqual([])
+    const [approve, swap] = scenario.events('sendTransaction')
+    expect(decodeApproval(approve.data as Hex)).toEqual({
+      spender: APPROVAL_ADDRESS,
+      amount: APPROVAL_AMOUNT,
+    })
+    expect(swap).toMatchObject({ to: APPROVAL_ADDRESS, data: SWAP_CALLDATA })
+  })
+
+  it('resets to 0 before the top-up when the step asks for approvalReset', async () => {
+    const scenario = buildScenario({ approvalReset: true })
+
+    await scenario.run()
+
+    const [reset, approve] = scenario.events('sendTransaction')
+    expect(decodeApproval(reset.data as Hex)).toEqual({
+      spender: APPROVAL_ADDRESS,
+      amount: 0n,
+    })
+    expect(decodeApproval(approve.data as Hex)).toEqual({
+      spender: APPROVAL_ADDRESS,
+      amount: APPROVAL_AMOUNT,
+    })
   })
 })

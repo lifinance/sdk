@@ -108,13 +108,20 @@ describe('getApprovalAmount', () => {
     expect(getApprovalAmount(context, false)).toBe(BigInt(APPROVAL_AMOUNT))
   })
 
-  it('prefers the estimate approvalAmount over the Permit2 allowance match', () => {
+  it('approves MAX to the Permit2 the allowance names, even with an approvalAmount', () => {
     const context = buildContext({
       approvalAddress: PERMIT2,
       approvalAmount: APPROVAL_AMOUNT,
       typedData: [permitSingle(PERMIT2)],
     })
-    expect(getApprovalAmount(context, false)).toBe(BigInt(APPROVAL_AMOUNT))
+    expect(getApprovalAmount(context, false)).toBe(MaxUint256)
+  })
+
+  it('never approves less than the swap amount', () => {
+    for (const approvalAmount of ['0', '1']) {
+      const context = buildContext({ approvalAmount })
+      expect(getApprovalAmount(context, false)).toBe(BigInt(FROM_AMOUNT))
+    }
   })
 
   it('keeps MAX for the SDK own Permit2 flow even with an approvalAmount', () => {
@@ -138,5 +145,26 @@ describe('getRequiredAllowance', () => {
   it('requires the swap amount on Permit2, whose spender is not the approval address', () => {
     const context = buildContext({ approvalAmount: APPROVAL_AMOUNT })
     expect(getRequiredAllowance(context, true)).toBe(BigInt(FROM_AMOUNT))
+  })
+
+  it('requires the swap amount when the approval target is the Permit2 the allowance names', () => {
+    const context = buildContext({
+      approvalAddress: PERMIT2,
+      approvalAmount: APPROVAL_AMOUNT,
+      typedData: [permitSingle(PERMIT2)],
+    })
+    expect(getRequiredAllowance(context, false)).toBe(BigInt(FROM_AMOUNT))
+  })
+
+  it('never requires less than the swap amount', () => {
+    for (const approvalAmount of ['0', '1']) {
+      const context = buildContext({ approvalAmount })
+      expect(getRequiredAllowance(context, false)).toBe(BigInt(FROM_AMOUNT))
+    }
+  })
+
+  it('treats an allowance of 2^96 - 1 as enough for an unlimited approvalAmount', () => {
+    const context = buildContext({ approvalAmount: MaxUint256.toString() })
+    expect(getRequiredAllowance(context, false)).toBe(2n ** 96n - 1n)
   })
 })

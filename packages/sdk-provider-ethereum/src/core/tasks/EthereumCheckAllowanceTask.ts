@@ -52,7 +52,8 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       status: 'COMPLETED',
       context: {
         hasAllowance: allowance > 0n,
-        hasSufficientAllowance: requiredAllowance <= allowance,
+        hasSufficientAllowance: BigInt(step.action.fromAmount) <= allowance,
+        needsAllowanceTopUp: allowance < requiredAllowance,
         executionStrategy,
         allowanceSpender: spenderAddress,
       },

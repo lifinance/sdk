@@ -35,7 +35,14 @@ export interface EthereumTaskContext {
   signedTypedData: SignedTypedData[]
   hasMatchingPermit?: boolean
   hasAllowance?: boolean
+  /** The allowance covers `fromAmount`. */
   hasSufficientAllowance?: boolean
+  /**
+   * The allowance is below what the step asks to approve, which can exceed
+   * `fromAmount` (`estimate.approvalAmount`). Only the reset and set allowance
+   * tasks read it.
+   */
+  needsAllowanceTopUp?: boolean
   /**
    * The spender `EthereumCheckAllowanceTask` checked the allowance against. The
    * other allowance tasks approve the same one. Prepare compares it with the
